@@ -11,12 +11,12 @@ from .gtfs_realtime_pb2 import TranslatedString, TripDescriptor
 
 @dataclass
 class TripDate:
-    trip_id: int
+    trip_id: str
     start_date: date
 
     @classmethod
-    def parse(cls, schedule_id: int, operating_date: str) -> Self:
-        return cls(schedule_id, date.fromisoformat(operating_date[:10]))
+    def parse(cls, schedule_id: int, order_id: int, operating_date: str) -> Self:
+        return cls(f"{schedule_id}_{order_id}", date.fromisoformat(operating_date[:10]))
 
     def as_json(self) -> Mapping[str, str]:
         return {"trip_id": str(self.trip_id), "start_date": self.start_date.isoformat()}

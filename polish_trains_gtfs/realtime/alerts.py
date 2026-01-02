@@ -61,5 +61,5 @@ def parse_alert(d: Mapping[str, Any]) -> Alert:
         id=d["id"],
         title=d["tt"] or "",
         description=d["msg"] or "",
-        trips=[TripDate.parse(i["sid"], i["od"]) for i in d["ar"]],
+        trips=[TripDate.parse(i["sid"], i["oid"], i["od"]) for i in d["ar"]],
     )

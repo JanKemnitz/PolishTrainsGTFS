@@ -103,7 +103,7 @@ def fetch_delays(apikey: str) -> FactContainer[TripDelay]:
 
 def parse_trip_delay(d: Mapping[str, Any]) -> TripDelay:
     return TripDelay(
-        trip=TripDate.parse(d["sid"], d["od"]),
+        trip=TripDate.parse(d["sid"], d["oid"], d["od"]),
         stops=[parse_stop_delay(i) for i in d["st"]],
     )
 
