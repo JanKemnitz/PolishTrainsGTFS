@@ -1,6 +1,10 @@
 PolishTrainsGTFS
 ================
 
+> ⚠️🏗️ This project is still under construction. The static generator works,
+> although it produces a low-quality feed. The realtime generator has not been tested,
+> even if it works, most likely it generates invalid trip_id and stop_sequence references.
+
 Creates a single, GTFS and GTFS-Realtime feeds for all Polish trains coordinated by [PKP PLK](https://www.plk-sa.pl/)
 (this excludes [WKD](https://wkd.com.pl/) or [UBB](https://www.ubb-online.com/)), including:
 
