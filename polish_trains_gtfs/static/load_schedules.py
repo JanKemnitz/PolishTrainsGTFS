@@ -131,6 +131,7 @@ class LoadSchedules(Task):
         extra_fields = json.dumps(
             {
                 "order_id": str(r["oid"]),
+                "plk_category_code": r["ccs"],
                 "plk_train_number": plk_number,
                 "trip_long_name": long_name,
             }
@@ -190,7 +191,7 @@ class LoadSchedules(Task):
         )
 
     def get_agency_id(self, db: DBConnection, carrier_code: str) -> str:
-        agency_id = {"Leo Express": "LEO"}.get(carrier_code, carrier_code.strip())
+        agency_id = carrier_code.strip()
         db.raw_execute(
             "INSERT OR IGNORE INTO agencies (agency_id, name, url, timezone, lang) "
             "VALUES (?, ?, 'https://example.com/', 'Europe/Warsaw', 'pl')",

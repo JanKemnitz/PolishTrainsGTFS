@@ -7,17 +7,25 @@ from typing import cast
 
 from impuls import App, HTTPResource, Pipeline, PipelineOptions
 from impuls.model import Date
-from impuls.resource import TimeLimitedResource
+from impuls.resource import LocalResource, TimeLimitedResource
 from impuls.tasks import ExecuteSQL, GenerateTripHeadsign, RemoveUnusedEntities, SaveGTFS
 
 from ..apikey import get_apikey
+from .curate_routes import CurateRoutes
 from .load_schedules import LoadSchedules
 from .load_stops import LoadStops
 
 RESOURCE_TIME_LIMIT = timedelta(days=1)
 
 GTFS_HEADERS = {
-    "agency.txt": ("agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang"),
+    "agency.txt": (
+        "agency_id",
+        "agency_name",
+        "agency_url",
+        "agency_timezone",
+        "agency_phone",
+        "agency_lang",
+    ),
     "attributions.txt": (
         "attribution_id",
         "organization_name",
@@ -42,6 +50,8 @@ GTFS_HEADERS = {
         "route_short_name",
         "route_long_name",
         "route_type",
+        "route_color",
+        "route_text_color",
     ),
     "stops.txt": ("stop_id", "stop_name", "stop_lat", "stop_lon"),
     "stop_times.txt": (
@@ -61,6 +71,7 @@ GTFS_HEADERS = {
         "trip_long_name",
         "trip_headsign",
         "order_id",
+        "plk_category_code",
         "plk_train_number",
     ),
 }
@@ -96,6 +107,7 @@ class PolishTrainsGTFS(App):
                 "pl_rail_map.osm": HTTPResource.get(
                     "https://raw.githubusercontent.com/MKuranowski/PLRailMap/master/plrailmap.osm"
                 ),
+                "routes.yaml": LocalResource("data/routes.yaml"),
             },
             tasks=[
                 LoadSchedules(),
@@ -104,6 +116,7 @@ class PolishTrainsGTFS(App):
                     task_name="DropWKD",
                 ),
                 RemoveUnusedEntities(),
+                CurateRoutes(),
                 LoadStops(),
                 GenerateTripHeadsign(),
                 SaveGTFS(GTFS_HEADERS, args.output, ensure_order=True),
