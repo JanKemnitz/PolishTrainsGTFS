@@ -17,6 +17,7 @@ from .extract_routes import ExtractRoutes
 from .load_schedules import LoadSchedules
 from .load_stops import LoadStops
 from .shift_negative_times import ShiftNegativeTimes
+from .split_bus_legs import SplitBusLegs
 
 RESOURCE_TIME_LIMIT = timedelta(days=1)
 
@@ -68,6 +69,7 @@ GTFS_HEADERS = {
         "plk_category_code",
         "plk_order",
     ),
+    "transfers.txt": ("from_stop_id", "to_stop_id", "from_trip_id", "to_trip_id", "transfer_type"),
     "trips.txt": (
         "trip_id",
         "route_id",
@@ -134,6 +136,7 @@ class PolishTrainsGTFS(App):
                 ),
                 AddTrainNames(),
                 GenerateTripHeadsign(),
+                SplitBusLegs(),
                 SaveGTFS(GTFS_HEADERS, args.output, ensure_order=True),
             ],
         )
