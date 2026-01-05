@@ -214,153 +214,124 @@ agencies:
     routes:
       # R* routes
       - id: "KM_R1"
-        match: [{short_name: "R1"}, {short_name: "Os/R1"}]
         short_name: "R1"
         long_name: "Warszawa — Skierniewice"
         color: "008800"
       - id: "KM_R2"
-        match: [{short_name: "R2"}, {short_name: "R2/Z2"}]
+        match: [{id: "KM_R2/Z2"}]
         short_name: "R2"
         long_name: "Warszawa — Łuków"
         color: "008800"
       - id: "KM_R21"
-        match: [{short_name: "R21"}]
         short_name: "R21"
         long_name: "Siedlce — Czeremcha"
         color: "008800"
       - id: "KM_R3"
-        match: [{short_name: "R3"}, {short_name: "Os/R3"}]
         short_name: "R3"
         long_name: "Warszawa — Kutno"
         color: "008800"
       - id: "KM_R31"
-        match: [{short_name: "R31"}]
         short_name: "R31"
         long_name: "Kutno — Sierpc"
         color: "008800"
       - id: "KM_R6"
-        match: [{short_name: "R6"}, {short_name: "R1/R60"}]
         short_name: "R6"
         long_name: "Warszawa — Małkinia"
         color: "008800"
       - id: "KM_R60"
-        match: [{short_name: "R60"}]
         short_name: "R60"
         long_name: "Warszawa — Małkinia"
         color: "008800"
       - id: "KM_R61"
-        match: [{short_name: "R61"}]
         short_name: "R61"
-        long_name: "Tłuszcz — Szczytno"
+        long_name: "Tłuszcz — Ostrołęka"
+        color: "008800"
+      - id: "KM_R62"
+        short_name: "R62"
+        long_name: "Ostrołęka — Chorzele"
         color: "008800"
       - id: "KM_R7"
-        match: [{short_name: "R7"}]
         short_name: "R7"
         long_name: "Warszawa — Dęblin"
         color: "008800"
       - id: "KM_R8"
-        match: [{short_name: "R8"}]
         short_name: "R8"
         long_name: "Warszawa — Skarżysko-Kamienna"
         color: "008800"
       - id: "KM_R80"
-        match: [{short_name: "R80"}]
         short_name: "R80"
         long_name: "Warszawa — Skarżysko-Kamienna"
         color: "008800"
       - id: "KM_R81"
-        match: [{short_name: "R81"}, {short_name: "R8/R81"}]
         short_name: "R81"
-        long_name: "Dęblin — Radom (— Skarżysko-Kamienna)"
+        long_name: "Dęblin — Radom"
         color: "008800"
       - id: "KM_R82"
-        match: [{short_name: "R82"}, {short_name: "R81/R82"}]
         short_name: "R82"
         long_name: "Radom — Drzewca"
         color: "008800"
       - id: "KM_R9"
-        match: [{short_name: "R9"}]
         short_name: "R9"
         long_name: "Warszawa — Działdowo"
         color: "008800"
       - id: "KM_R90"
-        match: [{short_name: "R90"}]
         short_name: "R90"
         long_name: "Warszawa — Działdowo"
         color: "008800"
       - id: "KM_R91"
-        match: [{short_name: "R91"}, {short_name: "R92"}]
         short_name: "R91"
         long_name: "Nasielsk — Sierpc"
         color: "008800"
-      - id: "KM_R92"
-        match: [{short_name: "R92"}]
-        short_name: "R92"
-        long_name: "Warszawa — Skarżysko-Kamienna"
-        color: "008800"
       # RE* lines
       - id: "KM_RE1"
-        match: [{short_name: "RE1"}]
         short_name: "RE1"
         long_name: "Warszawa — Skierniewice (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE2"
-        match: [{short_name: "RE2"}]
         short_name: "RE2"
         long_name: "Warszawa — Łuków (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE21"
-        match: [{short_name: "RE21"}]
         short_name: "RE21"
         long_name: "Warszawa — Czeremcha (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE3"
-        match: [{short_name: "RE3"}]
         short_name: "RE3"
         long_name: "Warszawa — Kutno (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE31"
-        match: [{short_name: "RE31"}]
         short_name: "RE31"
         long_name: "Warszawa — Płock (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE6"
-        match: [{short_name: "RE6"}]
         short_name: "RE6"
         long_name: "Warszawa — Małkinia (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE61"
-        match: [{short_name: "RE61"}]
         short_name: "RE61"
         long_name: "Warszawa — Ostrołęka (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE7"
-        match: [{short_name: "RE7"}]
         short_name: "RE7"
         long_name: "Warszawa — Dęblin (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE8"
-        match: [{short_name: "RE8"}]
         short_name: "RE8"
         long_name: "Warszawa — Skarżysko-Kamienna (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE80"
-        match: [{short_name: "RE80"}]
         short_name: "RE80"
         long_name: "Warszawa — Skarżysko-Kamienna (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE9"
-        match: [{short_name: "RE9"}]
         short_name: "RE9"
         long_name: "Warszawa — Działdowo (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE90"
-        match: [{short_name: "RE90"}]
         short_name: "RE90"
         long_name: "Warszawa — Działdowo (Przyspieszony)"
         color: "005A00"
       - id: "KM_RE91"
-        match: [{short_name: "RE91"}]
         short_name: "RE91"
         long_name: "Tłuszcz → Sierpc (Przyspieszony)"
         color: "005A00"
@@ -629,12 +600,38 @@ agencies:
         short_name: "SKA3"
         long_name: "Tarnów — Kraków Główny — Trzebinia — Oświęcim"
         color: "FBBA21"
-      # K?? routes (double digits need to match before single digits, "*K7*" would match "K71")
+      # K??P routes (double digits need to match before single digits, "*K7*" would match "K71")
+      - id: "PR_K33P"
+        match: [{short_name: "*K33P*"}]
+        short_name: "K33P"
+        long_name: "Kraków Główny — Olkusz — Wolbrom (Przyspieszony)"
+        color: "951A80"
+      - id: "PR_K52P"
+        match: [{short_name: "*K52P*"}]
+        short_name: "K52P"
+        long_name: "Kraków Główny — Wadowice — Bielsko-Biała (Przyspieszony)"
+        color: "BD1621"
+      # K?? routes
+      - id: "PR_K22"
+        match: [{short_name: "*K22*"}]
+        short_name: "K22"
+        long_name: "Katowice — Olkusz — Tunel — Kielce"
+        color: "95C11F"
       - id: "PR_K32"
         match: [{short_name: "*K32*"}]
         short_name: "K32"
         long_name: "Kraków Główny — Trzebinia — Oświęcim — Czechowice-Dziedzice"
         color: "69BFAC"
+      - id: "PR_K33"
+        match: [{short_name: "*K33*"}]
+        short_name: "K33"
+        long_name: "Kraków Główny — Olkusz — Wolbrom"
+        color: "951A80"
+      - id: "PR_K51"
+        match: [{short_name: "*K51*"}]
+        short_name: "K51"
+        long_name: "Sucha Beskidzka — Żywiec"
+        color: "673B11"
       - id: "PR_K52"
         match: [{short_name: "*K52*"}]
         short_name: "K52"
@@ -716,27 +713,23 @@ agencies:
     phone: "+48 22 19 115"
     routes:
       - id: "SKM_S1"
-        match: [{short_name: "S1"}]
         short_name: "S1"
         long_name: "Pruszków — Otwock"
         color: "E84A4B"
       - id: "SKM_S2"
-        match: [{short_name: "S2"}]
         short_name: "S2"
         long_name: "Warszawa Lotnisko Chopina — Sulejówek Miłosna"
         color: "2E8EC8"
       - id: "SKM_S3"
-        match: [{short_name: "S3"}]
         short_name: "S3"
         long_name: "Warszawa Lotnisko Chopina — Legionowo"
         color: "FFAD01"
       - id: "SKM_S4"
-        match: [{short_name: "S4"}, {short_name: "S4/S40"}]
+        match: [{id: "SKM_S4/S40"}]
         short_name: "S4"
         long_name: "Piaseczno — Wieliszew (— Zegrze Południowe)"
         color: "2F7B20"
       - id: "SKM_S40"
-        match: [{short_name: "S40"}]
         short_name: "S40"
         long_name: "Piaseczno — Wieliszew — Radzymin"
         color: "70AD46"
@@ -747,12 +740,10 @@ agencies:
     phone: "+48 58 721 21 70"
     routes:
       - id: "SKMT_S50"
-        match: [{short_name: "S50"}]
         short_name: "S50"
         long_name: "Gdańsk Główny — Gdańsk Stadion Expo"
         color: "008AD0"
       - id: "SKMT_S1"
-        match: [{}]
         short_name: "S1"
         long_name: "Gdańsk Śródmieście — Gdynia Cisowa (— Wejherowo — Lębork)"
         color: "008AD0"

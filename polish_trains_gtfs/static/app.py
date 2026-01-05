@@ -65,6 +65,8 @@ GTFS_HEADERS = {
         "departure_time",
         "platform",
         "track",
+        "plk_category_code",
+        "plk_order",
     ),
     "trips.txt": (
         "trip_id",
@@ -74,6 +76,7 @@ GTFS_HEADERS = {
         "trip_headsign",
         "plk_category_code",
         "plk_train_number",
+        "plk_train_name",
     ),
 }
 

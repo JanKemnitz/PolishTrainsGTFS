@@ -4,7 +4,7 @@
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from operator import itemgetter
-from typing import IO, Any, cast
+from typing import IO, cast
 from zoneinfo import ZoneInfo
 
 from impuls import DBConnection, Task, TaskRuntime
@@ -120,17 +120,19 @@ class LoadSchedules(Task):
 
     def process_route(self, db: DBConnection, r: json.Object) -> None:
         agency_id = self.get_agency_id(db, r["cc"])
-        route_id = self.get_route_id(db, agency_id, r["ccs"])
         calendar_id = self.get_calendar_id(db, r["od"])
         trip_id = get_trip_id(r["sid"], r["oid"], r.get("toid"))
 
-        plk_number = get_fallback(r, "nn", "idn", "ian", default="")
-        display_number = get_fallback(r, "idn", "ian", "nn", default="")
+        route_code = self.resolve_route_code(r)
+        route_id = self.get_route_id(db, agency_id, route_code)
+
+        plk_number = self.resolve_plk_number(r)
+        display_number = get_fallback(r, "idn", "ian", default=plk_number)
         plk_name = get_fallback(r, "nm", default="")
 
         extra_fields = json.dumps(
             {
-                "plk_category_code": r["ccs"],
+                "plk_category_code": route_code,
                 "plk_train_number": plk_number,
                 "plk_train_name": plk_name,
             }
@@ -142,7 +144,7 @@ class LoadSchedules(Task):
             (trip_id, route_id, calendar_id, display_number, extra_fields),
         )
 
-        route_stations = cast(list[dict[str, Any]], r["st"])
+        route_stations = cast(list[json.Object], r["st"])
         route_stations.sort(key=itemgetter("ord"))
         for i, route_station in enumerate(route_stations):
             self.process_route_stop(db, trip_id, i, route_station)
@@ -172,7 +174,10 @@ class LoadSchedules(Task):
             arrival_day = departure_day
         else:
             self.logger.warning(
-                "Trip %s has no time at stop %d (order %d)", trip_id, stop_id, order
+                "Trip %s has no time at stop %d (order %d)",
+                trip_id,
+                stop_id,
+                order,
             )
             return
 
@@ -181,7 +186,13 @@ class LoadSchedules(Task):
 
         platform = get_fallback(s, "dpl", "apl", default="")
         track = get_fallback(s, "dtr", "atr", default="")
-        extra_fields = json.dumps({"track": track, "order": str(order)})
+        extra_fields = json.dumps(
+            {
+                "track": track,
+                "plk_category_code": get_fallback(s, "dcc", "acc", default=""),
+                "plk_order": str(order),
+            }
+        )
 
         db.raw_execute(
             "INSERT INTO stop_times (trip_id, stop_sequence, stop_id, arrival_time, "
@@ -231,6 +242,36 @@ class LoadSchedules(Task):
             self.calendars[dates] = calendar_id
             return calendar_id
 
+    def resolve_plk_number(self, route: json.Object) -> str:
+        # Collect all unique numbers from the route stops. Note that the order matters.
+        international_number = get_fallback(route, "idn", "ian", default="")
+        seen_numbers = set[str]()
+        numbers = list[str]()
+        for s in route["st"]:
+            a = get_fallback(s, "dtn", "atn", default="").lstrip("0")
+            is_international = a == international_number or len(a) <= 3
+            if a and not is_international and a not in seen_numbers:
+                seen_numbers.add(a)
+                numbers.append(a)
+
+        # Resolve all used numbers into a human-readable string
+        match numbers:
+            case [a]:
+                return a
+            case [a, b] if can_numbers_be_combined(a, b):
+                return f"{a}/{b[-1]}"
+            case _:
+                if numbers:
+                    self.logger.warning("Don't know how to combine train numbers %r", numbers)
+                return route.get("nn") or ""
+
+    def resolve_route_code(self, route: json.Object) -> str:
+        categories = {c for s in route["st"] if (c := get_fallback(s, "dcc", "acc", default=""))}
+        if categories:
+            return "/".join(sorted(categories))
+        else:
+            return route["ccs"]
+
 
 def parse_time(x: str, day_offset: int = 0) -> int:
     parts = x.split(":")
@@ -247,7 +288,44 @@ def parse_time(x: str, day_offset: int = 0) -> int:
 
 
 def get_fallback[T](obj: json.Object, *keys: str, default: T) -> T:
+    """Chains multiple `obj.get` calls until the first true-ish element,
+    or returns `default` if no such element exists. Equivalent to
+    `obj.get(keys[0]) or obj.get(keys[1]) or ... or default`.
+
+    >>> get_fallback({"foo": "spam", "bar": "eggs"}, "foo", "bar", default="")
+    'spam'
+    >>> get_fallback({"bar": "eggs"}, "foo", "bar", default="")
+    'eggs'
+    >>> get_fallback({"foo": "", "bar": "eggs"}, "foo", "bar", default="")
+    'eggs'
+    >>> get_fallback({}, "foo", "bar", default="")
+    ''
+    """
+
     for key in keys:
         if item := obj.get(key):
             return cast(T, item)
     return default
+
+
+def unique[T](iter: Iterable[T]) -> list[T]:
+    """Returns all unique elements from `iter`, preserving iteration order.
+    Similar to `list(set(iter))`.
+
+    >>> unique([1, 2, 3])
+    [1, 2, 3]
+    >>> unique([3, 1, 1, 2, 1, 1, 2, 3, 1])
+    [3, 1, 2]
+    """
+
+    seen = set[T]()
+    result = list[T]()
+    for elem in iter:
+        if elem not in seen:
+            seen.add(elem)
+            result.append(elem)
+    return result
+
+
+def can_numbers_be_combined(a: str, b: str) -> bool:
+    return a != "" and b != "" and a[:-1] == b[:-1] and abs(int(a[-1]) - int(b[-1])) == 1
