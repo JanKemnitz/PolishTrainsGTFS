@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: 2025 Mikołaj Kuranowski
+# SPDX-FileCopyrightText: 2025-2026 Mikołaj Kuranowski
 # SPDX-License-Identifier: MIT
 
 import json
@@ -6,21 +6,25 @@ from argparse import ArgumentParser
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Self
+from typing import Literal, Self
 
+import requests
 from impuls.tools import logs
 
 from ..apikey import get_apikey
+from .alerts import fetch_alerts
 from .delays import fetch_delays
 from .schedules import Schedules
 
 
 @dataclass
 class Args:
+    type: Literal["alerts", "updates"]
     gtfs: Path
     output: Path
     human_readable: bool
     json: bool
+    user_agent_suffix: str
 
     def get_json_path(self) -> Path:
         return self.output.with_suffix(".json")
@@ -33,7 +37,7 @@ class Args:
             "--gtfs",
             type=Path,
             default=Path("polish_trains.zip"),
-            help="path to the GTFS Schedule file",
+            help="path to the GTFS Schedule file (defaults to polish_trains.zip)",
         )
         arg_parser.add_argument(
             "-o",
@@ -54,18 +58,49 @@ class Args:
             action="store_true",
             help="also write realtime data in json format",
         )
+        arg_parser.add_argument(
+            "-u",
+            "--user-agent",
+            default="",
+            help="additional string to include in User-Agent sent to the API",
+        )
+        arg_parser.add_argument("type", choices=["alerts", "updates"])
         args = arg_parser.parse_args(argv)
-        return cls(args.gtfs, args.output, args.human_readable, args.json)
+        return cls(
+            type=args.type,
+            gtfs=args.gtfs,
+            output=args.output,
+            human_readable=args.human_readable,
+            json=args.json,
+            user_agent_suffix=args.user_agent,
+        )
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = Args.parse(argv)
     logs.initialize(verbose=False)
-    apikey = get_apikey()
 
+    session = get_session(get_apikey(), args.user_agent_suffix)
     schedules = Schedules.load_from_gtfs(args.gtfs)
-    # facts = fetch_alerts(apikey).merge(fetch_delays(apikey))
-    facts = fetch_delays(apikey, schedules)
+
+    one_shot(session, schedules, args)
+
+
+def get_session(key: str, user_agent_suffix: str = "") -> requests.Session:
+    s = requests.Session()
+    s.headers["X-Api-Key"] = key
+    if user_agent_suffix:
+        s.headers["User-Agent"] = f"{requests.utils.default_user_agent()} ({user_agent_suffix})"
+    return s
+
+
+def one_shot(session: requests.Session, schedules: Schedules, args: Args) -> None:
+    if args.type == "alerts":
+        facts = fetch_alerts(session, schedules)
+    elif args.type == "updates":
+        facts = fetch_delays(session, schedules)
+    else:
+        raise RuntimeError(f"invalid feed type: {args.type!r}")
 
     update_file(
         str(facts.as_gtfs_rt()) if args.human_readable else facts.as_gtfs_rt().SerializeToString(),

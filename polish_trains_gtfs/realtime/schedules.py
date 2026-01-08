@@ -14,26 +14,42 @@ from impuls.model import Date
 from impuls.tools.temporal import BoundedDateRange
 from impuls.tools.types import StrPath
 
-from .tools import TripDate
+from .gtfs_realtime_pb2 import TripDescriptor
 
 
 @dataclass(frozen=True, eq=True)
-class OrderKey:
+class LiveTripKey:
     schedule_id: int
     order_id: int
     operating_date: Date
 
 
+@dataclass(frozen=True, eq=True)
+class GtfsTripKey:
+    trip_id: str
+    start_date: Date
+
+    def as_json(self) -> dict[str, str]:
+        return {"trip_id": self.trip_id, "start_date": self.start_date.isoformat()}
+
+    def as_gtfs_rt(self) -> TripDescriptor:
+        return TripDescriptor(
+            trip_id=str(self.trip_id),
+            schedule_relationship=TripDescriptor.SCHEDULED,
+            start_date=self.start_date.strftime("%Y%m%d"),
+        )
+
+
 @dataclass
 class StopTime:
-    trip: TripDate
+    trip: GtfsTripKey
     stop_sequence: int
     stop_id: str
 
 
 @dataclass
 class Trips:
-    all: list[TripDate]
+    all: list[GtfsTripKey]
     by_order_number: dict[int, StopTime]
 
 
@@ -43,13 +59,13 @@ class DatePair(NamedTuple):
 
 
 class TripKeyPair(NamedTuple):
-    gtfs: TripDate
-    live: OrderKey
+    gtfs: GtfsTripKey
+    live: LiveTripKey
 
 
 @dataclass
 class Schedules:
-    by_order: dict[OrderKey, Trips]
+    by_live_key: dict[LiveTripKey, Trips]
     valid_operating_dates: BoundedDateRange
 
     @classmethod
@@ -66,12 +82,12 @@ class Schedules:
                 services = _load_services(f, valid_operating_dates)
 
             with _open_text(arch, "trips.txt") as f:
-                by_order, trip_id_to_keys = _load_trips(f, services)
+                by_live_key, trip_id_to_keys = _load_trips(f, services)
 
             with _open_text(arch, "stop_times.txt") as f:
-                _load_stop_times(f, by_order, trip_id_to_keys)
+                _load_stop_times(f, by_live_key, trip_id_to_keys)
 
-        return cls(by_order, valid_operating_dates)
+        return cls(by_live_key, valid_operating_dates)
 
 
 def _load_feed_dates(f: Iterable[str]) -> BoundedDateRange:
@@ -97,8 +113,8 @@ def _load_services(f: Iterable[str], range: BoundedDateRange) -> dict[str, list[
 def _load_trips(
     f: Iterable[str],
     services: Mapping[str, Sequence[DatePair]],
-) -> tuple[dict[OrderKey, Trips], dict[str, list[TripKeyPair]]]:
-    by_order = dict[OrderKey, Trips]()
+) -> tuple[dict[LiveTripKey, Trips], dict[str, list[TripKeyPair]]]:
+    by_live_key = dict[LiveTripKey, Trips]()
     trip_id_to_keys = dict[str, list[TripKeyPair]]()
 
     for row in csv.DictReader(f):
@@ -109,29 +125,29 @@ def _load_trips(
 
         service_id = row["service_id"]
         for operating_date, start_date in services.get(service_id, []):
-            key = OrderKey(schedule_id, order_id, operating_date)
-            trip_date = TripDate(trip_id, start_date)
+            live_key = LiveTripKey(schedule_id, order_id, operating_date)
+            gtfs_key = GtfsTripKey(trip_id, start_date)
 
-            trip_id_to_keys.setdefault(trip_id, []).append(TripKeyPair(trip_date, key))
-            if t := by_order.get(key):
-                t.all.append(trip_date)
+            trip_id_to_keys.setdefault(trip_id, []).append(TripKeyPair(gtfs_key, live_key))
+            if t := by_live_key.get(live_key):
+                t.all.append(gtfs_key)
             else:
-                by_order[key] = Trips([trip_date], {})
+                by_live_key[live_key] = Trips([gtfs_key], {})
 
-    return by_order, trip_id_to_keys
+    return by_live_key, trip_id_to_keys
 
 
 def _load_stop_times(
     f: Iterable[str],
-    by_order: Mapping[OrderKey, Trips],
+    by_live_key: Mapping[LiveTripKey, Trips],
     trip_id_to_keys: Mapping[str, Sequence[TripKeyPair]],
 ) -> None:
     for row in csv.DictReader(f):
         trip_id = row["trip_id"]
-        for trip_date, key in trip_id_to_keys.get(trip_id, ()):
-            stop_time = StopTime(trip_date, int(row["stop_sequence"]), row["stop_id"])
+        for k in trip_id_to_keys.get(trip_id, ()):
+            stop_time = StopTime(k.gtfs, int(row["stop_sequence"]), row["stop_id"])
             order_number = int(row["plk_order"])
-            by_order[key].by_order_number[order_number] = stop_time
+            by_live_key[k.live].by_order_number[order_number] = stop_time
 
 
 @contextmanager

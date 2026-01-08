@@ -13,28 +13,27 @@ from impuls.model import Date
 from .. import json
 from . import gtfs_realtime_pb2
 from .fact import Fact, FactContainer
-from .schedules import OrderKey, Schedules, StopTime
-from .tools import TripDate
+from .schedules import GtfsTripKey, LiveTripKey, Schedules, StopTime
 
 logger = logging.getLogger("Delays")
 
-PAGE_SIZE = 5000  # Limited by the API
-MAX_PAGES = 4
+PAGE_SIZE = 20_000  # Limited by the API
+MAX_PAGES = 10
 
 
 @dataclass
 class Stats:
-    total: int = 0
     matched: int = 0
-    invalid_order_id: int = 0
+    unmatched: int = 0
     outside_feed_dates: int = 0
 
     def __str__(self) -> str:
-        matched_percentage = 100 * self.matched / self.total
+        total = self.matched + self.unmatched
+        matched_percentage = 100 * self.matched / total
         return (
-            f"matched {self.matched} / {self.total} ({matched_percentage:.2f} %); "
-            f"invalid order id: {self.invalid_order_id}; "
-            f"outside feed dates: {self.outside_feed_dates}; "
+            f"matched {self.matched} ({matched_percentage:.2f} %); "
+            f"unmatched: {self.unmatched}; "
+            f"outside feed dates: {self.outside_feed_dates} "
         )
 
 
@@ -78,7 +77,7 @@ class StopDelay:
 
 @dataclass
 class TripDelay(Fact):
-    trip: TripDate
+    trip: GtfsTripKey
     stops: list[StopDelay]
 
     def as_json(self) -> Mapping[str, Any]:
@@ -99,16 +98,15 @@ class TripDelay(Fact):
         )
 
 
-def fetch_delays(apikey: str, schedules: Schedules) -> FactContainer[TripDelay]:
+def fetch_delays(s: requests.Session, schedules: Schedules) -> FactContainer[TripDelay]:
     container = FactContainer[TripDelay](timestamp=datetime.min, facts=[])
     page_size = PAGE_SIZE
     stats = Stats()
 
     for page in range(1, MAX_PAGES + 1):
-        with requests.get(
+        with s.get(
             "https://pdp-api.plk-sa.pl/api/v1/operations/shortened",
             params={"page": str(page), "pageSize": str(page_size), "fullRoutes": "true"},
-            headers={"X-Api-Key": apikey},
         ) as r:
             r.raise_for_status()
             data = r.json()
@@ -124,7 +122,7 @@ def fetch_delays(apikey: str, schedules: Schedules) -> FactContainer[TripDelay]:
 
             # Stop requesting data if there is no next page
             if not data["pg"].get("hn", False):
-                logger.critical("%s", stats)
+                logger.info("Delays fetched successfully; %s", stats)
                 return container
 
     else:
@@ -132,9 +130,7 @@ def fetch_delays(apikey: str, schedules: Schedules) -> FactContainer[TripDelay]:
 
 
 def parse_train_delay(d: json.Object, s: Schedules, stats: Stats) -> dict[str, TripDelay]:
-    stats.total += 1
-
-    key = OrderKey(
+    key = LiveTripKey(
         schedule_id=d["sid"],
         order_id=d["oid"],
         operating_date=Date.from_ymd_str(d["od"][:10]),
@@ -144,10 +140,10 @@ def parse_train_delay(d: json.Object, s: Schedules, stats: Stats) -> dict[str, T
         stats.outside_feed_dates += 1
         return {}
 
-    trips = s.by_order.get(key)
+    trips = s.by_live_key.get(key)
     if not trips:
-        stats.invalid_order_id += 1
-        logger.warning("%r does not exist in static data", key)
+        stats.unmatched += 1
+        logger.debug("%r does not exist in static data", key)
         return {}
 
     delays_by_trip = dict[str, TripDelay]()
@@ -157,12 +153,12 @@ def parse_train_delay(d: json.Object, s: Schedules, stats: Stats) -> dict[str, T
         order = cast(int, stop_obj["psn"])
         stop_time = trips.by_order_number.get(order)
         if stop_time is None:
-            logger.warning("%r refers to unknown stop order %d", key, order)
+            logger.debug("%r refers to unknown stop order %d", key, order)
             continue
 
         stop_delay = parse_stop_delay(stop_obj, stop_time)
         if stop_delay.stop_id != stop_time.stop_id:
-            logger.warning(
+            logger.debug(
                 "%r at order=%d changes stop %s → %s",
                 key,
                 order,

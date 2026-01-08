@@ -3,5 +3,5 @@ _impuls_workspace/
 .env
 .venv
 polish_trains.zip
-polish_trains.pb
-polish_trains.json
+polish_trains*.pb
+polish_trains*.json
