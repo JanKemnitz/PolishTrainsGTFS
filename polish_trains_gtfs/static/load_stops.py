@@ -18,6 +18,7 @@ class Station:
     name: str = ""
     lat: float = 0.0
     lon: float = 0.0
+    extra_id: str = ""
 
     def __bool__(self) -> bool:
         return bool(self.id and self.name and self.lat and self.lon)
@@ -35,6 +36,8 @@ class PLRailMapLoader(XmlSaxContentHandler):
         elif name == "tag":
             if attrs["k"] == "ref":
                 self.current_station.id = attrs["v"]
+            elif attrs["k"] == "ref:2":
+                self.current_station.extra_id = attrs["v"]
             elif attrs["k"] == "name":
                 self.current_station.name = attrs["v"]
 
@@ -66,14 +69,25 @@ class LoadStops(impuls.Task):
         self._ensure_everything_curated()
 
     def _apply(self, station: Station, db: impuls.DBConnection) -> None:
-        if station.id not in self.to_update:
-            return  # unused station
+        if station.id in self.to_update:
+            db.raw_execute(
+                "UPDATE stops SET name = ?, lat = ?, lon = ? WHERE stop_id = ?",
+                (station.name, station.lat, station.lon, station.id),
+            )
+            if station.extra_id in self.to_update:
+                db.raw_execute(
+                    "UPDATE stop_times SET stop_id = ? WHERE stop_id = ?",
+                    (station.id, station.extra_id),
+                )
+                db.raw_execute("DELETE FROM stops WHERE stop_id = ?", (station.extra_id,))
+        elif station.extra_id in self.to_update:
+            db.raw_execute(
+                "UPDATE stops SET stop_id = ?, name = ?, lat = ?, lon = ? WHERE stop_id = ?",
+                (station.id, station.name, station.lat, station.lon, station.extra_id),
+            )
 
         self.to_update.pop(station.id, None)
-        db.raw_execute(
-            "UPDATE stops SET name = ?, lat = ?, lon = ? WHERE stop_id = ?",
-            (station.name, station.lat, station.lon, station.id),
-        )
+        self.to_update.pop(station.extra_id, None)
 
     def _ensure_everything_curated(self) -> None:
         if self.to_update:
