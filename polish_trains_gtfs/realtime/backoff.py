@@ -4,6 +4,7 @@
 import logging
 import time
 from collections.abc import Callable
+from datetime import timedelta
 
 import requests
 
@@ -71,8 +72,12 @@ class Backoff:
                 force_min_pause = e.force_pause_s
                 logger.error(
                     "Backing off for %d s: %s",
-                    self.pause if force_min_pause <= 0.0 else force_min_pause,
+                    format_period(max(self.pause, force_min_pause)),
                     e.args[0],
                 )
 
             self.sleep(force_min_pause)
+
+
+def format_period(seconds: float) -> str:
+    return str(timedelta(seconds=seconds))
