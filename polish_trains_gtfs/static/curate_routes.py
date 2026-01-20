@@ -31,7 +31,6 @@ class CuratedRoute(TypedDict):
 
 class CuratedAgency(TypedDict):
     id: str
-    alternative_ids: NotRequired[list[str]]
     name: str
     url: str
     phone: NotRequired[str]
@@ -121,18 +120,9 @@ class CurateRoutes(Task):
                 (data["id"], data["name"], data["url"], data.get("phone", "")),
             )
 
-        db.raw_execute_many(
-            "UPDATE routes SET agency_id = ? WHERE agency_id = ?",
-            ((data["id"], alt_id) for alt_id in data.get("alternative_ids", [])),
-        )
-
     def get_all_routes_to_curate(self, data: CuratedAgency) -> dict[str, Route]:
-        all = dict[str, Route]()
-        ids = [data["id"], *data.get("alternative_ids", [])]
-        for id in ids:
-            _, routes = self.to_curate.pop(id, (None, dict[str, Route]()))
-            all.update(routes)
-        return all
+        _, routes = self.to_curate.pop(data["id"], (None, dict[str, Route]()))
+        return routes
 
     def curate_route(
         self,

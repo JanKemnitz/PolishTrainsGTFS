@@ -66,7 +66,7 @@ GTFS_HEADERS = {
         "platform",
         "track",
         "plk_category_code",
-        "plk_order",
+        "plk_sequence",
     ),
     "transfers.txt": ("from_stop_id", "to_stop_id", "from_trip_id", "to_trip_id", "transfer_type"),
     "trips.txt": (
@@ -78,6 +78,7 @@ GTFS_HEADERS = {
         "plk_category_code",
         "plk_train_number",
         "plk_train_name",
+        "plk_order_id",
     ),
 }
 

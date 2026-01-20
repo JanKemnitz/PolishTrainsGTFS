@@ -9,9 +9,15 @@ from zoneinfo import ZoneInfo
 
 from impuls import DBConnection, Task, TaskRuntime
 from impuls.model import Attribution, Date, FeedInfo
+from impuls.tools.strings import find_non_conflicting_id
 
 from .. import json
-from ..ids import get_trip_id
+
+AGENCY_ID_NORMALIZER = {
+    "KMŁ": "KML",
+    "Leo Express": "LEO",
+    "ŁKA": "LKA",
+}
 
 MINUTE = 60
 HOUR = 60 * MINUTE
@@ -31,6 +37,7 @@ class LoadSchedules(Task):
         self.agency_names = dict[str, str]()
         self.route_names = dict[str, str]()
         self.stop_names = dict[int, str]()
+        self.used_trip_ids = set[str]()
 
     def clear(self) -> None:
         self.calendar_id_counter = 0
@@ -39,6 +46,7 @@ class LoadSchedules(Task):
         self.agency_names.clear()
         self.route_names.clear()
         self.stop_names.clear()
+        self.used_trip_ids.clear()
 
     def execute(self, r: TaskRuntime) -> None:
         self.clear()
@@ -126,7 +134,8 @@ class LoadSchedules(Task):
     def process_route(self, db: DBConnection, r: json.Object) -> None:
         agency_id = self.get_agency_id(db, r["cc"])
         calendar_id = self.get_calendar_id(db, r["od"])
-        trip_id = get_trip_id(r["sid"], r["oid"], r.get("toid"))
+        order_id = str(r["oid"])
+        first_date = Date.from_ymd_str(min(r["od"])[:10])
 
         route_code = self.resolve_route_code(r)
         route_id = self.get_route_id(db, agency_id, route_code)
@@ -135,11 +144,14 @@ class LoadSchedules(Task):
         display_number = get_fallback(r, "idn", "ian", default=plk_number)
         plk_name = get_fallback(r, "nm", default="")
 
+        trip_id = self.get_trip_id(agency_id, plk_number, order_id, first_date)
+
         extra_fields = json.dumps(
             {
                 "plk_category_code": route_code,
                 "plk_train_number": plk_number,
                 "plk_train_name": plk_name,
+                "plk_order_id": order_id,
             }
         )
 
@@ -162,7 +174,7 @@ class LoadSchedules(Task):
         s: json.Object,
     ) -> None:
         stop_id = self.get_stop_id(db, s["id"])
-        order = cast(int, s["ord"])
+        plk_sequence = cast(int, s["ord"])
 
         arrival_time = s.get("atm")
         arrival_day = s.get("ady") or 0
@@ -179,10 +191,10 @@ class LoadSchedules(Task):
             arrival_day = departure_day
         else:
             self.logger.warning(
-                "Trip %s has no time at stop %d (order %d)",
+                "Trip %s has no time at stop %d (plk_seq %d)",
                 trip_id,
                 stop_id,
-                order,
+                plk_sequence,
             )
             return
 
@@ -195,7 +207,7 @@ class LoadSchedules(Task):
             {
                 "track": track,
                 "plk_category_code": get_fallback(s, "dcc", "acc", default=""),
-                "plk_order": str(order),
+                "plk_sequence": str(plk_sequence),
             }
         )
 
@@ -207,6 +219,7 @@ class LoadSchedules(Task):
 
     def get_agency_id(self, db: DBConnection, carrier_code: str) -> str:
         agency_id = carrier_code.strip()
+        agency_id = AGENCY_ID_NORMALIZER.get(agency_id, agency_id)
         db.raw_execute(
             "INSERT OR IGNORE INTO agencies (agency_id, name, url, timezone, lang) "
             "VALUES (?, ?, 'https://example.com/', 'Europe/Warsaw', 'pl')",
@@ -260,6 +273,11 @@ class LoadSchedules(Task):
                 seen_numbers.add(a)
                 numbers.append(a)
 
+        # XXX: Hotfix for longer, undetected international numbers
+        # In particular: [1014, 41022, 41023] and [14022, 14023, 1014]
+        if any(len(i) == 4 for i in numbers) and any(len(i) == 5 for i in numbers):
+            numbers = [i for i in numbers if len(i) == 5]
+
         # Resolve all used numbers into a human-readable string
         match numbers:
             case [a]:
@@ -269,7 +287,10 @@ class LoadSchedules(Task):
             case _:
                 if numbers:
                     self.logger.warning("Don't know how to combine train numbers %r", numbers)
-                return route.get("nn") or ""
+                fallback = route.get("nn") or international_number
+                if not fallback:
+                    raise ValueError("train with absolutely no numbers")
+                return fallback
 
     def resolve_route_code(self, route: json.Object) -> str:
         categories = {c for s in route["st"] if (c := get_fallback(s, "dcc", "acc", default=""))}
@@ -277,6 +298,16 @@ class LoadSchedules(Task):
             return "/".join(sorted(categories))
         else:
             return route["ccs"]
+
+    def get_trip_id(self, agency_id: str, number: str, order_id: str, first_date: Date) -> str:
+        base = "_".join(
+            ("PLK", agency_id, number.replace("/", "-") or order_id, first_date.isoformat()),
+        )
+        id = find_non_conflicting_id(self.used_trip_ids, base, "_")
+        if id != base:
+            self.logger.warning("Non-unique trip_id: %s", base)
+        self.used_trip_ids.add(id)
+        return id
 
 
 def parse_time(x: str, day_offset: int = 0) -> int:

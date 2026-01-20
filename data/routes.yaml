@@ -348,7 +348,6 @@ agencies:
         color: "008800"
 
   - id: "KML"
-    alternative_ids: ["KMŁ"]
     name: "Koleje Małopolskie"
     url: "https://kolejemalopolskie.com.pl/"
     phone: "+48 12 288 82 00"
@@ -571,7 +570,6 @@ agencies:
         color: "E6000A"
 
   - id: "LEO"
-    alternative_ids: ["Leo Express"]
     name: "Leo Express"
     url: "https://www.leoexpress.com/"
     phone: "+48 22 263 02 97"
@@ -583,7 +581,6 @@ agencies:
         color: "F08200"
 
   - id: "LKA"
-    alternative_ids: ["ŁKA"]
     name: "Łódzka Kolej Aglomeracyjna"
     url: "https://lka.lodzkie.pl/"
     phone: "+48 887 879 980"
