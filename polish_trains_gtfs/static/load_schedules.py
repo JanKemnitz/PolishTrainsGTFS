@@ -12,6 +12,7 @@ from impuls.model import Attribution, Date, FeedInfo
 from impuls.tools.strings import find_non_conflicting_id
 
 from .. import json
+from ..calendar import CalendarGenerator
 
 AGENCY_ID_NORMALIZER = {
     "KMŁ": "KML",
@@ -31,18 +32,14 @@ class LoadSchedules(Task):
         super().__init__()
         self.r = r
 
-        self.calendar_id_counter = 0
-        self.calendars = dict[frozenset[Date], int]()
-
+        self.calendars = CalendarGenerator("PLK_")
         self.agency_names = dict[str, str]()
         self.route_names = dict[str, str]()
         self.stop_names = dict[int, str]()
         self.used_trip_ids = set[str]()
 
     def clear(self) -> None:
-        self.calendar_id_counter = 0
         self.calendars.clear()
-
         self.agency_names.clear()
         self.route_names.clear()
         self.stop_names.clear()
@@ -65,17 +62,17 @@ class LoadSchedules(Task):
             Attribution,
             (
                 Attribution(
-                    id="1",
+                    id="MK",
+                    organization_name="GTFS: Mikołaj Kuranowski",
+                    url="https://mkuran.pl/gtfs/",
+                    is_producer=True,
+                ),
+                Attribution(
+                    id="PLK",
                     organization_name="Data: PKP Polskie linie Kolejowe S.A.",
                     url="https://www.plk-sa.pl/klienci-i-kontrahenci/api-otwarte-dane",
                     is_authority=True,
                     is_data_source=True,
-                ),
-                Attribution(
-                    id="2",
-                    organization_name="GTFS: Mikołaj Kuranowski",
-                    url="https://mkuran.pl/gtfs/",
-                    is_producer=True,
                 ),
             ),
         )
@@ -133,7 +130,7 @@ class LoadSchedules(Task):
 
     def process_route(self, db: DBConnection, r: json.Object) -> None:
         agency_id = self.get_agency_id(db, r["cc"])
-        calendar_id = self.get_calendar_id(db, r["od"])
+        calendar_id = self.calendars.upsert(db, (Date.from_ymd_str(i[:10]) for i in r["od"]))
         order_id = str(r["oid"])
         first_date = Date.from_ymd_str(min(r["od"])[:10])
 
@@ -242,23 +239,6 @@ class LoadSchedules(Task):
             (stop_id, self.stop_names.get(stop_id, "")),
         )
         return stop_id
-
-    def get_calendar_id(self, db: DBConnection, operating_dates: Iterable[str]) -> int:
-        dates = frozenset(Date.from_ymd_str(i[:10]) for i in operating_dates)
-        if calendar_id := self.calendars.get(dates):
-            return calendar_id
-        else:
-            self.calendar_id_counter += 1
-            calendar_id = self.calendar_id_counter
-
-            db.raw_execute("INSERT INTO calendars (calendar_id) VALUES (?)", (calendar_id,))
-            db.raw_execute_many(
-                "INSERT INTO calendar_exceptions (calendar_id,date,exception_type) VALUES (?,?,1)",
-                ((calendar_id, str(date)) for date in dates),
-            )
-
-            self.calendars[dates] = calendar_id
-            return calendar_id
 
     def resolve_plk_number(self, route: json.Object) -> str:
         # Collect all unique numbers from the route stops. Note that the order matters.

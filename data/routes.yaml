@@ -346,6 +346,12 @@ agencies:
         short_name: "RL"
         long_name: "Warszawa Lotnisko Chopina — Modlin"
         color: "008800"
+      - id: "KM_ZL"
+        match: [{short_name: "ZL"}]
+        short_name: "ZL"
+        long_name: "Stacja Modlin — Lotnisko Modlin"
+        color: "F5B900"
+        type: 3
 
   - id: "KML"
     name: "Koleje Małopolskie"

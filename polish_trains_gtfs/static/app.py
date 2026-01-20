@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 
 from argparse import ArgumentParser, Namespace
-from datetime import timedelta
 from typing import cast
 
 from impuls import App, HTTPResource, LocalResource, Pipeline, PipelineOptions
@@ -10,6 +9,7 @@ from impuls.model import Date
 from impuls.tasks import ExecuteSQL, GenerateTripHeadsign, RemoveUnusedEntities, SaveGTFS
 
 from ..apikey import get_apikey
+from . import external
 from .add_train_names import AddTrainNames
 from .curate_routes import CurateRoutes
 from .extract_routes import ExtractRoutes
@@ -17,8 +17,6 @@ from .load_schedules import LoadSchedules
 from .load_stops import LoadStops
 from .shift_negative_times import ShiftNegativeTimes
 from .split_bus_legs import SplitBusLegs
-
-RESOURCE_TIME_LIMIT = timedelta(days=1)
 
 GTFS_HEADERS = {
     "agency.txt": (
@@ -93,17 +91,31 @@ class PolishTrainsGTFS(App):
             default=Date.today(),
             help="start date for the schedules",
         )
+        parser.add_argument(
+            "-e",
+            "--external",
+            action="store_true",
+            help="load extra data from external, non-plk sources",
+        )
 
     def prepare(self, args: Namespace, options: PipelineOptions) -> Pipeline:
-        apikey = get_apikey()
+        apikey = get_apikey("PKP_PLK_APIKEY")
 
         # NOTE: We need to fetch schedules from start_date-1 to properly show night trains.
         start_date = cast(Date, args.start_date).add_days(-1)
         end_date = start_date.add_days(31)
 
+        if args.external:
+            external_resources = external.get_resources()
+            external_tasks = external.get_tasks()
+        else:
+            external_resources = {}
+            external_tasks = []
+
         return Pipeline(
             options=options,
             resources={
+                **external_resources,
                 "schedules.json": HTTPResource.get(
                     "https://pdp-api.plk-sa.pl/api/v1/schedules/shortened",
                     headers={"X-Api-Key": apikey},
@@ -117,6 +129,7 @@ class PolishTrainsGTFS(App):
             },
             tasks=[
                 LoadSchedules(),
+                *external_tasks,
                 ExecuteSQL(
                     statement="DELETE FROM agencies WHERE agency_id = 'WKD'",
                     task_name="DropWKD",
