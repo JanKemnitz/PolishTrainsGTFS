@@ -1,0 +1,14 @@
+routes:
+  - agency: KM
+    short_name_match: '^R(.+)$'
+    short_name_replacement: 'Z\1'
+    long_name_replacement: '{0} (Zastępcza Komunikacja Autobusowa)'
+    color: '880000'
+
+  - agency: KD
+    short_name_match: '^D(31|81|92)'
+
+  - short_name_match: '^(.*)$'
+    short_name_replacement: 'ZKA \1'
+    long_name_replacement: '{0} (Zastępcza Komunikacja Autobusowa)'
+    color: 'DE4E4E'

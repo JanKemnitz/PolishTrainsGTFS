@@ -2,20 +2,62 @@
 # SPDX-License-Identifier: MIT
 
 import re
+from typing import NotRequired, TypedDict
 
+from impuls import TaskRuntime
 from impuls.model import Route
 from impuls.tasks import SplitTripLegs
+from impuls.tools.color import text_color_for
+
+
+class BusRouteCuration(TypedDict):
+    agency: NotRequired[str]
+    short_name_match: str
+    short_name_replacement: NotRequired[str]
+    long_name_replacement: NotRequired[str]
+    color: NotRequired[str]
 
 
 class SplitBusLegs(SplitTripLegs):
-    def __init__(self) -> None:
+    def __init__(self, r: str = "bus_routes.yaml") -> None:
         super().__init__(
             replacement_bus_short_name_pattern=re.compile(r"\bZKA\b", re.I),
             leg_trip_id_infix="_LEG",
         )
+        self.r = r
+        self.curated_routes = list[BusRouteCuration]()
+
+    def execute(self, r: TaskRuntime) -> None:
+        self.curated_routes = r.resources[self.r].yaml()["routes"]
+        super().execute(r)
 
     def update_bus_replacement_route(self, route: Route) -> None:
         route.type = Route.Type.BUS
+
+        # Try to match route with one of the curated ones
+        for curated_route in self.curated_routes:
+            # Check if agency matches
+            if "agency" in curated_route and curated_route["agency"] != route.agency_id:
+                continue
+
+            # Check if short_name matches
+            short_name_match = re.search(curated_route["short_name_match"], route.short_name)
+            if not short_name_match:
+                continue
+
+            # Both agency and short_name match - apply route
+            if short_name_template := curated_route.get("short_name_replacement"):
+                route.short_name = short_name_match.expand(short_name_template)
+            if long_name_template := curated_route.get("long_name_replacement"):
+                route.long_name = long_name_template.format(route.long_name)
+
+            if color := curated_route.get("color"):
+                route.color = color
+                route.text_color = text_color_for(color)
+
+            return
+
+        # Apply fallback curation
         route.short_name = f"ZKA {route.short_name}"
         route.long_name = f"{route.long_name} (Zastępcza Komunikacja Autobusowa)"
         route.color = "DE4E4E"

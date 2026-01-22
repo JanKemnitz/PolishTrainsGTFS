@@ -132,6 +132,7 @@ class PolishTrainsGTFS(App):
                 "pl_rail_map.osm": HTTPResource.get(
                     "https://raw.githubusercontent.com/MKuranowski/PLRailMap/master/plrailmap.osm"
                 ),
+                "bus_routes.yaml": LocalResource("data/bus_routes.yaml"),
                 "routes.yaml": LocalResource("data/routes.yaml"),
                 "route_extract.yaml": LocalResource("data/route_extract.yaml"),
             },
@@ -164,6 +165,13 @@ class PolishTrainsGTFS(App):
                     task_name="FixMissingBusPlatforms",
                 ),
                 SplitBusLegs(),
+                ExecuteSQL(
+                    statement=(
+                        "DELETE FROM routes WHERE NOT EXISTS "
+                        "(SELECT 1 FROM trips WHERE trips.route_id = routes.route_id)"
+                    ),
+                    task_name="DropUnusedRoutes",
+                ),
                 LoadBusStops(),
                 SaveGTFS(GTFS_HEADERS, args.output, ensure_order=True),
             ],
