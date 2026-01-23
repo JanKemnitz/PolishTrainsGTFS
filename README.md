@@ -1,9 +1,8 @@
 PolishTrainsGTFS
 ================
 
-> ⚠️🏗️ This project is still under construction. The static generator works,
-> although it produces a low-quality feed. The realtime generator has not been tested,
-> even if it works, most likely it generates invalid trip_id and stop_sequence references.
+> ⚠️🏗️ This project is still under construction. While the static generator works,
+> and is mostly production-ready; the realtime generator is WIP and probably does not work.
 
 Creates a single, GTFS and GTFS-Realtime feeds for all Polish trains coordinated by [PKP PLK](https://www.plk-sa.pl/)
 (this excludes [WKD](https://wkd.com.pl/) or [UBB](https://www.ubb-online.com/)), including:
@@ -24,6 +23,20 @@ Creates a single, GTFS and GTFS-Realtime feeds for all Polish trains coordinated
 
 
 Data comes from the [Otwarte Dane Kolejowe API from PKP PLK](https://pdp-api.plk-sa.pl/).
+
+
+Data Caveats
+------------
+
+- Railway stop locations are pulled from [PLRailMap](https://github.com/mkuranowski/plrailmap),
+    which sometimes misses position updates. File issues (or better yet, PRs) upstream.
+- Bus stop locations are also pulled from [PLRailMap](https://github.com/mkuranowski/plrailmap),
+    and are not available for all stations. File PRs upstream.
+- Timed connections and carriage transfers are not provided - they're missing from the PKP PLK API.
+- Platform and track info is missing at stops marked by PKP PLK as disembarking only.
+- International trains are kinda messed up. Bus replacement services are sometimes missing
+    (and remain as trains). Sometimes, only partial routes are available (OEDG, NEB). Rarely,
+    the agency is also incorrect (NEB trains to/from Kostrzyn are reported as operated by PolRegio).
 
 
 Running
@@ -63,6 +76,17 @@ use your IDE .env file support to avoid having to `export` it in your shell.
 PolishTrainsGTFS also supports Docker-style secret passing. Instead of setting the apikey
 directly, a path to a file containing the apikey may be provided in the `PKP_PLK_APIKEY_FILE`
 environment variable. Note that `PKP_PLK_APIKEY` takes precedence if both variables are set.
+
+
+External Data
+-------------
+
+By providing the `-e`/`--external` flag to the static script, data for several routes
+will be pulled directly from operator APIs. Agency-provided datasets sometimes have
+higher-quality data, or PKP PLK API is straight up missing some routes
+(like the Modlin Airport shuttle bus). This requires providing extra access credentials:
+
+- `KM_APIKEY` - Koleje Mazowieckie XML schedules apikey.
 
 
 License
