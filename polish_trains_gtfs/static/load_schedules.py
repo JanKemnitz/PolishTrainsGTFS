@@ -195,20 +195,33 @@ class LoadSchedules(Task):
         arrival = parse_time(arrival_time, arrival_day)
         departure = parse_time(departure_time, departure_day)
 
-        platform = get_fallback(s, "dpl", "apl", default="")
-        track = get_fallback(s, "dtr", "atr", default="")
+        arr_platform = s.get("apl", "")
+        dep_platform = s.get("dpl", "")
+        arr_track = s.get("atr", "")
+        dep_track = s.get("dtr", "")
+
         extra_fields = json.dumps(
             {
-                "track": track,
+                "track": dep_track or arr_track,
                 "plk_category_code": get_fallback(s, "dcc", "acc", default=""),
                 "plk_sequence": str(plk_sequence),
+                "arrival_platform": arr_platform,
+                "arrival_track": arr_track,
             }
         )
 
         db.raw_execute(
             "INSERT INTO stop_times (trip_id, stop_sequence, stop_id, arrival_time, "
             "departure_time, platform, extra_fields_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (trip_id, sequence, stop_id, arrival, departure, platform, extra_fields),
+            (
+                trip_id,
+                sequence,
+                stop_id,
+                arrival,
+                departure,
+                dep_platform or arr_platform,
+                extra_fields,
+            ),
         )
 
     def get_agency_id(self, db: DBConnection, carrier_code: str) -> str:

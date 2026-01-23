@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 import re
-from typing import NotRequired, TypedDict
+from copy import copy
+from typing import Any, NotRequired, TypedDict
 
 from impuls import TaskRuntime
-from impuls.model import Route
+from impuls.model import Route, StopTime
 from impuls.tasks import SplitTripLegs
 from impuls.tools.color import text_color_for
 
@@ -62,3 +63,33 @@ class SplitBusLegs(SplitTripLegs):
         route.long_name = f"{route.long_name} (Zastępcza Komunikacja Autobusowa)"
         route.color = "DE4E4E"
         route.text_color = "FFFFFF"
+
+    def arrival_only(self, stop_time: StopTime, previous_data: Any) -> StopTime:
+        new = copy(stop_time)
+        extra = new.get_extra_fields()
+        new.departure_time = new.arrival_time
+
+        if previous_data:
+            new.platform = "BUS"
+            extra["track"] = ""
+        else:
+            new.platform = extra.get("arrival_platform", "")
+            extra["track"] = extra.get("arrival_track", "")
+
+        new.set_extra_fields(extra)
+        return new
+
+    def departure_only(self, stop_time: StopTime, current_data: Any) -> StopTime:
+        new = copy(stop_time)
+        extra = new.get_extra_fields()
+        new.arrival_time = new.departure_time
+
+        if current_data:
+            new.platform = "BUS"
+            extra["track"] = ""
+        elif new.platform == "BUS":
+            new.platform = ""
+            extra["track"] = ""
+
+        new.set_extra_fields(extra)
+        return new
