@@ -574,7 +574,7 @@ agencies:
         color: "E8B120"
       - id: "KW_P"
         match: [{id: "*OsP*"}]
-        short_name: "KW"
+        short_name: "KW P"
         long_name: "Koleje Wielkopolskie - Pospieszny"
         color: "C70003"
       - id: "KW"
@@ -601,17 +601,17 @@ agencies:
     routes:
       - id: "LKA_LS"
         match: [{short_name: "*ŁS*"}]
-        short_name: "ŁS"
+        short_name: "ŁKA S"
         long_name: "Łódzka Kolej Aglomeracyjna - Sprinter"
         color: "E4010B"
       - id: "LKA_LP"
         match: [{short_name: "*ŁP*"}]
-        short_name: "ŁP"
+        short_name: "ŁKA P"
         long_name: "Łódzka Kolej Aglomeracyjna - Przyspieszony"
         color: "E4010B"
       - id: "LKA"
         match: [{}]
-        short_name: "Ł"
+        short_name: "ŁKA"
         long_name: "Łódzka Kolej Aglomeracyjna"
         color: "FFD600"
 
@@ -750,7 +750,7 @@ agencies:
         color: "E50000"
       - id: "PR_RP"
         match: [{id: "*RP*"}]
-        short_name: "RP"
+        short_name: "REG P"
         long_name: "PolRegio - Przyspieszony"
         color: "E50000"
       - id: "PR_REG"
