@@ -9,11 +9,12 @@ import (
 	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/fact"
 	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/schedules"
 	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/source"
+	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/util/time2"
 )
 
 func Alerts(real *source.Disruptions, static *schedules.Package, stats *Stats) *fact.Container {
 	c := &fact.Container{
-		Timestamp: real.Timestamp,
+		Timestamp: real.Timestamp.In(time2.PolishTimezone),
 		Alerts:    make([]*fact.Alert, 0, len(real.Disruptions)),
 	}
 	for _, d := range real.Disruptions {
