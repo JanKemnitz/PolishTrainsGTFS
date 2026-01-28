@@ -25,6 +25,7 @@ const (
 )
 
 type Container struct {
+	Schema      string        `json:"$schema,omitempty"`
 	Timestamp   time.Time     `json:"timestamp"`
 	Alerts      []*Alert      `json:"alerts,omitempty"`
 	TripUpdates []*TripUpdate `json:"trip_updates,omitempty"`
@@ -152,8 +153,8 @@ type TripUpdate struct {
 	ID string `json:"id"`
 	TripSelector
 	StopTimes []*StopTimeUpdate `json:"stop_times,omitempty"`
-	Cancelled bool              `json:"cancelled"`
-	Detour    bool              `json:"detour"`
+	Cancelled bool              `json:"cancelled,omitempty"`
+	Detour    bool              `json:"detour,omitempty"`
 }
 
 func (t *TripUpdate) AsGTFS() *gtfs.FeedEntity {
@@ -184,8 +185,8 @@ type StopTimeUpdate struct {
 	StopID    string    `json:"stop_id,omitempty"`
 	Arrival   time.Time `json:"arrival,omitzero"`
 	Departure time.Time `json:"departure,omitzero"`
-	Cancelled bool      `json:"cancelled"`
-	Confirmed bool      `json:"confirmed"`
+	Cancelled bool      `json:"cancelled,omitempty"`
+	Confirmed bool      `json:"confirmed,omitempty"`
 }
 
 func (s *StopTimeUpdate) AsGTFS() *gtfs.TripUpdate_StopTimeUpdate {

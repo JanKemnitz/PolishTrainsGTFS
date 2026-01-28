@@ -19,6 +19,7 @@ import (
 
 func TripUpdates(real *source.Operations, static *schedules.Package, stats *Stats) *fact.Container {
 	c := &fact.Container{
+		Schema:      "https://mkuran.pl/gtfs/polish_trains/live.schema.json",
 		Timestamp:   real.Timestamp.In(time2.PolishTimezone),
 		TripUpdates: make([]*fact.TripUpdate, 0, len(real.Trains)),
 	}

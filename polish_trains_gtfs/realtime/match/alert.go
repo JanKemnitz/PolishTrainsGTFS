@@ -14,6 +14,7 @@ import (
 
 func Alerts(real *source.Disruptions, static *schedules.Package, stats *Stats) *fact.Container {
 	c := &fact.Container{
+		Schema:    "https://mkuran.pl/gtfs/polish_trains/live.schema.json",
 		Timestamp: real.Timestamp.In(time2.PolishTimezone),
 		Alerts:    make([]*fact.Alert, 0, len(real.Disruptions)),
 	}
