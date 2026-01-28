@@ -162,7 +162,7 @@ func getAllRealStopIDs(stops []*source.OperationTrainStop, canonicalStops map[st
 
 func getDetourStopTimeUpdates(stops []*source.OperationTrainStop, canonicalStops map[string]string) []*fact.StopTimeUpdate {
 	updates := make([]*fact.StopTimeUpdate, 0, len(stops))
-	idx := 0
+	idx := 1000
 
 	for _, stop := range stops {
 		stopID := canonicalStops[strconv.Itoa(stop.StopID)]
