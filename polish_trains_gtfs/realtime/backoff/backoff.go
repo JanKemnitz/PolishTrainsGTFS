@@ -11,9 +11,10 @@ const (
 )
 
 type Backoff struct {
-	Period             time.Duration
-	Failures           uint
-	MaxBackoffExponent uint
+	Period                 time.Duration
+	ExponentialBackoffBase time.Duration
+	Failures               uint
+	MaxBackoffExponent     uint
 
 	lastRun time.Time
 	nextRun time.Time
@@ -29,11 +30,17 @@ func (b *Backoff) EndRun(success bool) time.Time {
 		b.nextRun = b.lastRun.Add(b.Period)
 	} else {
 		backoffExponent := b.Failures
+		backoffBase := b.ExponentialBackoffBase
 		b.Failures++
+
+		if backoffBase == 0 {
+			backoffBase = b.Period
+		}
 		if b.MaxBackoffExponent > 0 && backoffExponent > b.MaxBackoffExponent {
 			backoffExponent = b.MaxBackoffExponent
 		}
-		sleep := time.Duration(1<<backoffExponent) * b.Period
+
+		sleep := time.Duration(1<<backoffExponent) * backoffBase
 		b.nextRun = b.lastRun.Add(sleep)
 	}
 	return b.nextRun

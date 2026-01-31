@@ -68,7 +68,12 @@ func main() {
 		}
 		slog.Info("Feed updated successfully", "facts", totalFacts, "stats", stats)
 	} else {
-		b := backoff.Backoff{Period: 30 * time.Second, MaxBackoffExponent: 6}
+		b := backoff.Backoff{
+			Period:                 *flagLoop,
+			ExponentialBackoffBase: 30 * time.Second,
+			MaxBackoffExponent:     6,
+		}
+
 		for {
 			b.Wait()
 			b.StartRun()
