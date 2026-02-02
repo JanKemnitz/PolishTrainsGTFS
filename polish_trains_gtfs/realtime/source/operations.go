@@ -16,8 +16,8 @@ import (
 	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/util/time2"
 )
 
-const DefaultPageSize = 5000
-const DefaultMaxPages = 10
+const DefaultPageSize = 10_000
+const DefaultMaxPages = 5
 const DefaultFetchSpacing = 100 * time.Millisecond
 
 var ErrTooManyPages = errors.New("fetching operations takes too many pages")
