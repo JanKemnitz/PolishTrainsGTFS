@@ -254,15 +254,13 @@ class LoadSchedules(Task):
     def resolve_plk_number(self, route: json.Object) -> str:
         # Collect all unique numbers from the route stops. Note that the order matters.
         international_number = get_fallback(route, "idn", "ian", default="")
-        seen_numbers = set[str]()
-        numbers = list[str]()
+        numbers = set[str]()
         for s in route["st"]:
             a = get_fallback(s, "dtn", "atn", default="").lstrip("0")
             is_invalid = "brak" in a or "/" in a
             is_international = a == international_number or len(a) <= 3
-            if a and not is_invalid and not is_international and a not in seen_numbers:
-                seen_numbers.add(a)
-                numbers.append(a)
+            if a and not is_invalid and not is_international:
+                numbers.add(a)
 
         # XXX: Hotfix for longer, undetected international numbers
         # In particular: [1014, 41022, 41023] and [14022, 14023, 1014]
@@ -270,7 +268,7 @@ class LoadSchedules(Task):
             numbers = [i for i in numbers if len(i) == 5]
 
         # Resolve all used numbers into a human-readable string
-        match numbers:
+        match sorted(numbers):
             case [a]:
                 return a
             case [a, b] if can_numbers_be_combined(a, b):
