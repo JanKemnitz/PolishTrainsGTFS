@@ -259,6 +259,7 @@ agencies:
         long_name: "Ostrołęka — Chorzele"
         color: "008800"
       - id: "KM_R7"
+        match: [{id: "KM_R7/Z7"}]
         short_name: "R7"
         long_name: "Warszawa — Dęblin"
         color: "008800"
@@ -271,10 +272,12 @@ agencies:
         long_name: "Warszawa — Skarżysko-Kamienna"
         color: "008800"
       - id: "KM_R81"
+        match: [{id: "KM_R8/R81"}]
         short_name: "R81"
         long_name: "Dęblin — Radom"
         color: "008800"
       - id: "KM_R82"
+        match: [{id: "KM_R81/R82"}]
         short_name: "R82"
         long_name: "Radom — Drzewca"
         color: "008800"
@@ -360,6 +363,11 @@ agencies:
         long_name: "Stacja Modlin — Lotnisko Modlin"
         color: "F5B900"
         type: 3
+      - id: "KM"
+        match: [{short_name: "*"}]
+        short_name: "KM"
+        long_name: ""
+        color: "008800"
 
   - id: "KML"
     name: "Koleje Małopolskie"
