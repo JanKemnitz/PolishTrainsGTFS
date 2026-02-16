@@ -4,15 +4,67 @@
 package client
 
 import (
+	"encoding/json"
+	"fmt"
 	"log/slog"
 	"math/rand/v2"
 	"net/http"
+	"net/url"
+	"os"
 	"time"
 
 	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/util/http2"
+	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/util/vpn"
 )
 
 const PoolClientBackoff = 30 * time.Minute
+
+type JSONDuration time.Duration
+
+func (d JSONDuration) String() string {
+	return time.Duration(d).String()
+}
+
+func (d JSONDuration) MarshalText() (text []byte, err error) {
+	return []byte(time.Duration(d).String()), nil
+}
+
+func (d *JSONDuration) UnmarshalText(text []byte) error {
+	duration, err := time.ParseDuration(string(text))
+	*d = JSONDuration(duration)
+	return err
+}
+
+type ClientConfig struct {
+	Key       string               `json:"key"`
+	RateLimit JSONDuration         `json:"rate_limit,omitempty"`
+	Proxy     *url.URL             `json:"proxy,omitempty"`
+	Wireguard *vpn.WireguardConfig `json:"wireguard,omitempty"`
+}
+
+func (c ClientConfig) Instantiate() *Client {
+	client := new(Client)
+	client.Key = c.Key
+	client.RateLimit = time.Duration(c.RateLimit)
+
+	if c.Wireguard != nil && c.Proxy != nil {
+		panic("Client can't use Wireguard VPN and a proxy at the same time")
+	} else if c.Wireguard != nil {
+		var err error
+		client.Doer, client.Closer, err = vpn.NewWireguardClient(c.Wireguard)
+		if err != nil {
+			panic(fmt.Errorf("failed to connect to vpn: %w", err))
+		}
+	} else if c.Proxy != nil {
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.Proxy = http.ProxyURL(c.Proxy)
+		client.Doer = &http.Client{Transport: transport}
+	} else {
+		client.Doer = http.DefaultClient
+	}
+
+	return client
+}
 
 type Client struct {
 	Key       string
@@ -55,6 +107,29 @@ func NewPool(clients ...*Client) *Pool {
 		clients: clients,
 		backoff: make([]time.Time, len(clients)),
 	}
+}
+
+func NewPoolFromConfigs(configs ...ClientConfig) *Pool {
+	clients := make([]*Client, len(configs))
+	for i, config := range configs {
+		clients[i] = config.Instantiate()
+	}
+	return NewPool(clients...)
+}
+
+func NewPoolFromJSON(path string) (*Pool, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var configs []ClientConfig
+	err = json.Unmarshal(content, &configs)
+	if err != nil {
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
+
+	return NewPoolFromConfigs(configs...), nil
 }
 
 func (p *Pool) Close() {

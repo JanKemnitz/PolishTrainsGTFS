@@ -104,6 +104,30 @@ PolishTrainsGTFS also supports Docker-style secret passing. Instead of setting t
 directly, a path to a file containing the apikey may be provided in the `PKP_PLK_APIKEY_FILE`
 environment variable. Note that `PKP_PLK_APIKEY` takes precedence if both variables are set.
 
+The realtime script has an extra `-clients` option, which can be used to granularly control
+how data is requested. If present, it overrides the `PKP_PLK_APIKEY`,
+and must be a path to a JSON file following the below schema.
+
+```ts
+type TopLevelConfig = Client[];
+
+interface Client {
+    key: string,
+    rate_limit?: string,   // See https://pkg.go.dev/time#ParseDuration for accepted values; defaults to none
+    proxy?: string,        // URL; if not provided the HTTP_PROXY, HTTPS_PROXY and NO_PROXY env variables are respected
+    wireguard?: Wireguard, // Wireguard VPN config; if provided any proxy config is ignored
+}
+
+interface Wireguard {
+    endpoint: string,    // IPv4 or IPv6 host and port (and possibly a zone)
+    dns?: string,        // IPv4 or IPv6 address; defaults to 1.1.1.1
+    address: string,     // IPv4 or IPv6 address
+    public_key: string,  // base64-encoded
+    private_key: string, // base64-encoded
+    pre_shared_key?: string,  // base64-encoded
+}
+```
+
 
 External Data
 -------------

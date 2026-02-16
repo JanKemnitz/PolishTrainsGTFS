@@ -21,12 +21,12 @@ import (
 var DefaultDNS = "1.1.1.1"
 
 type WireguardConfig struct {
-	Endpoint     string
-	DNS          netip.Addr
-	Address      netip.Addr
-	PublicKey    string
-	PrivateKey   string
-	PreSharedKey string
+	Endpoint     string     `json:"endpoint"`
+	DNS          netip.Addr `json:"dns,omitempty"`
+	Address      netip.Addr `json:"address"`
+	PublicKey    string     `json:"public_key"`
+	PrivateKey   string     `json:"private_key"`
+	PreSharedKey string     `json:"pre_shared_key,omitempty"`
 }
 
 func LoadWireguardConfigFromFile(path string) (*WireguardConfig, error) {

@@ -10,7 +10,6 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -24,18 +23,17 @@ import (
 	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/util/client"
 	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/util/http2"
 	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/util/secret"
-	"github.com/MKuranowski/PolishTrainsGTFS/polish_trains_gtfs/realtime/util/vpn"
 )
 
 var (
 	flagAlerts      = flag.Bool("alerts", false, "parse disruptions instead of operations")
 	flagAlternative = flag.Duration("alternative", 20*time.Minute, "when non-zero, fetch fresh schedules from API")
+	flagClients     = flag.String("clients", "", "path to JSON client configuration file")
 	flagGTFS        = flag.String("gtfs", "polish_trains.zip", "path to GTFS Schedule feed")
 	flagLoop        = flag.Duration("loop", 0, "when non-zero, update the feed continuously with the given period")
 	flagOutput      = flag.String("output", "polish_trains.pb", "path to output .pb file")
 	flagReadable    = flag.Bool("readable", false, "dump output in human-readable format")
 	flagVerbose     = flag.Bool("verbose", false, "show DEBUG logging")
-	flagVpn         = flag.String("vpn", "", "when non-empty, route all traffic through VPN(s) set-up with a WireGuard config file or directory with such files")
 )
 
 var jsonOutput = ""
@@ -48,12 +46,7 @@ func main() {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 	initJsonOutput()
-
-	apikey, err := secret.FromEnvironment("PKP_PLK_APIKEY")
-	if err != nil {
-		log.Fatal(err)
-	}
-	initClientPool(apikey)
+	initClientPool()
 	defer clientPool.Close()
 
 	slog.Info("Loading static schedules")
@@ -197,78 +190,29 @@ func initJsonOutput() {
 	jsonOutput = dir + name
 }
 
-func initClientPool(apikey string) {
-	var clients []*client.Client
-	rateLimit := 100 * time.Millisecond
-	if *flagLoop != 0 {
-		rateLimit = 1 * time.Second
-	}
-
-	if *flagVpn == "" {
-		clients = append(clients, &client.Client{
-			Key:       apikey,
-			Doer:      http.DefaultClient,
-			RateLimit: rateLimit,
-		})
-	} else if !isDir(*flagVpn) {
-		config, err := vpn.LoadWireguardConfigFromFile(*flagVpn)
-		if err != nil {
-			log.Fatalf("%s: %s", *flagVpn, err)
+func initClientPool() {
+	if *flagClients == "" {
+		rateLimit := 100 * time.Millisecond
+		if *flagLoop != 0 {
+			rateLimit = 1 * time.Second
 		}
 
-		c, closer, err := vpn.NewWireguardClient(config)
-		if err != nil {
-			log.Fatalf("%s: %s", *flagVpn, err)
-		}
-
-		clients = append(clients, &client.Client{
-			Key:       apikey,
-			Doer:      c,
-			Closer:    closer,
-			RateLimit: rateLimit,
-		})
-	} else {
-		files, err := os.ReadDir(*flagVpn)
+		apikey, err := secret.FromEnvironment("PKP_PLK_APIKEY")
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		for _, file := range files {
-			name := filepath.Join(*flagVpn, file.Name())
-			if file.IsDir() || filepath.Ext(name) != ".conf" {
-				continue
-			}
+		clientPool = client.NewPool(&client.Client{
+			Key:       apikey,
+			Doer:      http.DefaultClient,
+			RateLimit: rateLimit,
+		})
+	} else {
+		var err error
 
-			config, err := vpn.LoadWireguardConfigFromFile(name)
-			if err != nil {
-				log.Fatalf("%s: %s", name, err)
-			}
-
-			c, closer, err := vpn.NewWireguardClient(config)
-			if err != nil {
-				log.Fatalf("%s: %s", *flagVpn, err)
-			}
-
-			clients = append(clients, &client.Client{
-				Key:       apikey,
-				Doer:      c,
-				Closer:    closer,
-				RateLimit: rateLimit,
-			})
-		}
-
-		if len(clients) == 0 {
-			log.Fatalf("%s: no WireGuard .conf files", *flagVpn)
+		clientPool, err = client.NewPoolFromJSON(*flagClients)
+		if err != nil {
+			log.Fatal(err)
 		}
 	}
-
-	clientPool = client.NewPool(clients...)
-}
-
-func isDir(path string) bool {
-	stat, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-	return stat.IsDir()
 }
