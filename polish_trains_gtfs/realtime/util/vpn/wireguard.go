@@ -89,6 +89,8 @@ func (c *WireguardConfig) AsUAPIString() string {
 	b.WriteString(c.ResolveEndpoint())
 	b.WriteByte('\n')
 
+	b.WriteString("persistent_keepalive_interval=60\n")
+
 	b.WriteString("allowed_ip=0.0.0.0/0\n")
 	b.WriteString("allowed_ip=::/0\n")
 
