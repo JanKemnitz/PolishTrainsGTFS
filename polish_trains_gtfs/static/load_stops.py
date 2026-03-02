@@ -11,7 +11,7 @@ from xml.sax.xmlreader import AttributesImpl as XmlSaxAttributes
 
 import impuls
 
-from .. import json
+from .util import json
 
 
 @dataclass

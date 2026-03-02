@@ -11,8 +11,8 @@ from impuls import DBConnection, Task, TaskRuntime
 from impuls.model import Attribution, Date, FeedInfo
 from impuls.tools.strings import find_non_conflicting_id
 
-from .. import json
-from ..calendar import CalendarGenerator
+from .util import json
+from .util.calendar import CalendarGenerator
 
 AGENCY_ID_NORMALIZER = {
     "KMŁ": "KML",

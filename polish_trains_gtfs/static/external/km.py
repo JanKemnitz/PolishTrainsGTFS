@@ -14,8 +14,8 @@ from impuls import DBConnection, HTTPResource, LocalResource, Resource, TaskRunt
 from impuls.model import Attribution, Date, Route, Stop
 from impuls.tools.temporal import date_range, get_european_railway_schedule_revision
 
-from ...apikey import get_apikey
-from ...calendar import CalendarGenerator
+from ..util.apikey import get_apikey
+from ..util.calendar import CalendarGenerator
 from .task import LoadExternal
 
 TZ = ZoneInfo("Europe/Warsaw")

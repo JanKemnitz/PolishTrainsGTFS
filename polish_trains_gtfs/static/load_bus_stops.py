@@ -17,7 +17,7 @@ from impuls.model import Stop
 from impuls.tools.geo import initial_bearing
 from impuls.tools.types import StrPath
 
-from .. import json
+from .util import json
 
 BEARING_CODE_TO_DEGREES = {
     "N": 0,

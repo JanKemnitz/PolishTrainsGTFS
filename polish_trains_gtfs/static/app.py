@@ -8,7 +8,6 @@ from impuls import App, HTTPResource, LocalResource, Pipeline, PipelineOptions
 from impuls.model import Date, Stop
 from impuls.tasks import AddEntity, ExecuteSQL, GenerateTripHeadsign, RemoveUnusedEntities, SaveGTFS
 
-from ..apikey import get_apikey
 from . import external
 from .add_train_names import AddTrainNames
 from .curate_routes import CurateRoutes
@@ -19,6 +18,7 @@ from .load_schedules import LoadSchedules
 from .load_stops import LoadStops
 from .shift_negative_times import ShiftNegativeTimes
 from .split_bus_legs import SplitBusLegs
+from .util.apikey import get_apikey
 
 GTFS_HEADERS = {
     "agency.txt": (
