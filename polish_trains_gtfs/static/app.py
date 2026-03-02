@@ -10,6 +10,7 @@ from impuls.tasks import AddEntity, ExecuteSQL, GenerateTripHeadsign, RemoveUnus
 
 from . import external
 from .add_train_names import AddTrainNames
+from .assign_direction_id import AssignDirectionID
 from .curate_routes import CurateRoutes
 from .extract_routes import ExtractRoutes
 from .generate_shapes import GenerateBusShapes, GenerateShapes
@@ -84,6 +85,7 @@ GTFS_HEADERS = {
         "trip_id",
         "route_id",
         "service_id",
+        "direction_id",
         "shape_id",
         "trip_short_name",
         "trip_headsign",
@@ -145,6 +147,7 @@ class PolishTrainsGTFS(App):
                     "https://raw.githubusercontent.com/MKuranowski/PLRailMap/master/plrailmap.osm"
                 ),
                 "bus_routes.yaml": LocalResource("data/bus_routes.yaml"),
+                "directions.yaml": LocalResource("data/directions.yaml"),
                 "routes.yaml": LocalResource("data/routes.yaml"),
                 "route_extract.yaml": LocalResource("data/route_extract.yaml"),
                 "shapes.yaml": LocalResource("data/shapes.yaml"),
@@ -181,6 +184,7 @@ class PolishTrainsGTFS(App):
                 ),
                 AddTrainNames(),
                 GenerateTripHeadsign(),
+                AssignDirectionID(),
                 ExecuteSQL(
                     statement=(
                         "UPDATE stop_times SET platform = 'BUS' "

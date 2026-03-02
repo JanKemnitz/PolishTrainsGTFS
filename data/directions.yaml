@@ -1,0 +1,64 @@
+# Warsaw area: "0" is eastbound over cross-city line
+- agencies: ["SKM", "KM"]
+  outbound_pairs:
+    - [33506, 33605] # W-wa Zachodnia -> W-wa Centralna
+    - [23309, 23333] # Ostrołęka -> Grabowo
+    - [32623, 32607] # Płock Trzepowo -> Płock
+    - [32326, 32201] # Kutno Azory -> Kutno
+    - [36467, 0] # Modlin -> Lotnisko Modlin
+  force_for_conflicting: true
+
+# Kraków area: "0" is northbound
+- agencies: ["KML"]
+  routes:
+    - "PR_K2"
+    - "PR_K22"
+    - "PR_K3"
+    - "PR_K3P"
+    - "PR_K32"
+    - "PR_K33"
+    - "PR_K33P"
+    - "PR_K5"
+    - "PR_K51"
+    - "PR_K52"
+    - "PR_K52P"
+    - "PR_K63"
+    - "PR_K7"
+    - "PR_K7P"
+    - "PR_K71"
+    - "PR_SKA2"
+    - "PR_SKA3"
+  outbound_pairs:
+    - [239140, 80416] # Kraków Grzegórzki -> Kraków Gł.
+    - [80416, 79236]  # Kraków Gł. -> Kraków Batowice
+    - [80416, 280603] # Kraków Gł. -> Kraków Piastów
+    - [76687, 76711]  # Hucisko -> Kurów Suski
+  force_for_conflicting: true
+
+
+# Gdańsk area: "0" is northbound
+- agencies: ["SKMT"]
+  outbound_pairs:
+    - [258458, 7500] # Gdańsk Śródmieście -> Gdańsk Główny
+
+# Poznań area: "0" is northbound
+- agencies: ["KW"]
+  routes: ["PR_PKM1", "PR_PKM2", "PR_PKM3", "PR_PKM4", "PR_PKM5"]
+  outbound_pairs:
+    - [30601, 29892] # Poznań Główny -> Poznań Grabary
+  force_for_conflicting: true
+
+# Wrocław area: "0" is westbound from Wrocław Główny
+- agencies: ["KD"]
+  outbound_pairs:
+    - [60103, 58651]  # Wrocław Główny -> Wrocław Mikołajów
+    - [56184, 178345] # Szklarska Poręba Górna -> Szklarska Poręba Huta
+    - [55806, 56028]  # Jelenia Góra -> Karpacz (outbound due to Wałbrzych - Jelenia Góra - Karpacz trains)
+    - [58271, 60103]  # Oława -> Wrocław Główny
+    - [44305, 44511]  # Rawicz -> Bojanowo
+    - [59352, 242927] # Siedlec Trzebnicki -> Pierwoszów Miłocin
+    - [55632, 55277]  # Sędzisław -> Kamienna Góra
+  pairs_to_ignore:
+    - [58347, 58172]  # Jelcz-Laskowice -> Jelcz Miłoszyce
+    - [58172, 58347]  # Jelcz Miłoszyce -> Jelcz-Laskowice
+  force_for_conflicting: true
