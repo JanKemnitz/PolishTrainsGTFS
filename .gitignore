@@ -7,3 +7,6 @@ _impuls_workspace/
 polish_trains.zip
 polish_trains*.pb
 polish_trains*.json
+.vscode/*
+prop/*
+.dockerignore

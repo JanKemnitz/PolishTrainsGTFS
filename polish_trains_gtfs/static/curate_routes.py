@@ -81,7 +81,7 @@ class CurateRoutes(Task):
         self.leftover = list[Agency | Route]()
 
     def execute(self, r: TaskRuntime) -> None:
-        curated_data = cast(CuratedData, r.resources[self.r].yaml())
+        curated_data = cast(CuratedData, r.resources[self.r].yaml(encoding="utf-8"))
         self.load_to_curate(r.db)
 
         with r.db.transaction():

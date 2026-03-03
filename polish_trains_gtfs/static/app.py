@@ -10,7 +10,7 @@ from impuls.tasks import AddEntity, ExecuteSQL, GenerateTripHeadsign, RemoveUnus
 
 from . import external
 from .add_train_names import AddTrainNames
-from .assign_direction_id import AssignDirectionID
+# from .assign_direction_id import AssignDirectionID
 from .curate_routes import CurateRoutes
 from .extract_routes import ExtractRoutes
 from .generate_shapes import GenerateBusShapes, GenerateShapes
@@ -20,6 +20,7 @@ from .load_stops import LoadStops
 from .shift_negative_times import ShiftNegativeTimes
 from .split_bus_legs import SplitBusLegs
 from .util.apikey import get_apikey
+from .assign_directions import AssignDirections
 
 GTFS_HEADERS = {
     "agency.txt": (
@@ -88,6 +89,7 @@ GTFS_HEADERS = {
         "direction_id",
         "shape_id",
         "trip_short_name",
+        "direction_id",
         "trip_headsign",
         "plk_category_code",
         "plk_train_number",
@@ -184,7 +186,8 @@ class PolishTrainsGTFS(App):
                 ),
                 AddTrainNames(),
                 GenerateTripHeadsign(),
-                AssignDirectionID(),
+                # AssignDirectionID(),
+                AssignDirections(),
                 ExecuteSQL(
                     statement=(
                         "UPDATE stop_times SET platform = 'BUS' "
