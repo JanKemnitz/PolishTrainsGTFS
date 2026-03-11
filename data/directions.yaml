@@ -5,6 +5,7 @@
     - [23309, 23333] # Ostrołęka -> Grabowo
     - [32623, 32607] # Płock Trzepowo -> Płock
     - [32326, 32201] # Kutno Azory -> Kutno
+    - [36707, 36848] # Nasielsk -> Kątne
     - [36467, 0] # Modlin -> Lotnisko Modlin
   force_for_conflicting: true
 
@@ -54,6 +55,7 @@
     - [60103, 58651]  # Wrocław Główny -> Wrocław Mikołajów
     - [56184, 178345] # Szklarska Poręba Górna -> Szklarska Poręba Huta
     - [55806, 56028]  # Jelenia Góra -> Karpacz (outbound due to Wałbrzych - Jelenia Góra - Karpacz trains)
+    - [55806, 56184]  # Jelenia Góra -> Szklarska Poręba Górna (direct trains)
     - [58271, 60103]  # Oława -> Wrocław Główny
     - [44305, 44511]  # Rawicz -> Bojanowo
     - [59352, 242927] # Siedlec Trzebnicki -> Pierwoszów Miłocin
