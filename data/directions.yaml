@@ -47,6 +47,7 @@
   routes: ["PR_PKM1", "PR_PKM2", "PR_PKM3", "PR_PKM4", "PR_PKM5"]
   outbound_pairs:
     - [30601, 29892] # Poznań Główny -> Poznań Grabary
+    - [42879, 42606] # Lasocice -> Leszno
   force_for_conflicting: true
 
 # Wrocław area: "0" is westbound from Wrocław Główny
