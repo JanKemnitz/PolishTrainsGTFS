@@ -176,7 +176,7 @@ func writeOutput(facts *fact.Container) error {
 
 func canRetry(err error) bool {
 	// Retry when hit by ECONNRESET, presumably by the VPN
-	return errors.Is(err, syscall.ECONNRESET)
+	return errors.Is(err, syscall.ECONNRESET) || strings.Contains(err.Error(), "connection reset by peer")
 }
 
 func canBackoff(err error) bool {

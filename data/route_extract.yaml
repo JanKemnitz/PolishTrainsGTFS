@@ -91,6 +91,7 @@ KD:
         - passes_through: [55848]  # Stara Kamienica
         - passes_through: [55970]  # Mysałkowice
         - passes_through: [56028]  # Karpacz
+        - passes_through: [51995]  # Jerzmanki
     - route_code: "D61"
       select:
         - passes_through: [241793]  # Harrachov
