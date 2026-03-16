@@ -345,7 +345,7 @@ agencies:
         color: "008800"
       # R? routes
       - id: "KM_R1"
-        match: [{short_name: "*R1*"}]
+        match: [{short_name: "*R1*"}, {short_name: "*Z1*"}]
         short_name: "R1"
         long_name: "Warszawa — Skierniewice"
         color: "008800"
