@@ -86,7 +86,6 @@ GTFS_HEADERS = {
         "trip_id",
         "route_id",
         "service_id",
-        "direction_id",
         "shape_id",
         "trip_short_name",
         "direction_id",
