@@ -180,20 +180,23 @@ class SchedulesHandler(SAXContentHandler):
             self.train = ParsedTrain()
 
     def endElement(self, name: str) -> None:
-        if name == "number":
-            assert self.chars
-            self.train.numbers.append("".join(self.chars))
+        if name == "version":
+            version = self.collect_chars()
+            if not version:
+                raise ValueError("Train <version> element is empty")
+            self.train.version = version
             self.chars = None
 
-        elif name == "version":
-            assert self.chars
-            self.train.version = "".join(self.chars)
-            self.chars = None
+        elif name == "number":
+            number = self.collect_chars()
+            if not number:
+                raise ValueError("Train <number> element is empty")
+            self.train.numbers.append(number)
 
         elif name == "symbol":
-            assert self.chars
-            self.train.symbol = "".join(self.chars)
-            self.chars = None
+            symbol = self.collect_chars()
+            if symbol:
+                self.train.symbol = symbol
 
         elif name in {"include", "exclude"}:
             self.days_nesting = DaysNesting.OUTER
@@ -201,6 +204,12 @@ class SchedulesHandler(SAXContentHandler):
         elif name == "train":
             if self.train.numbers and self.train.stop_times and self.train.dates:
                 self.callback(self.train)
+
+    def collect_chars(self) -> str:
+        assert self.chars is not None
+        s = "".join(self.chars)
+        self.chars = None
+        return s
 
 
 def _parse_time(x: str) -> int:
