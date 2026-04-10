@@ -2,6 +2,8 @@
 - agencies: ["SKM", "KM"]
   outbound_pairs:
     - [33506, 33605] # W-wa Zachodnia -> W-wa Centralna
+    - [33498, 33571] # W-wa Ochota -> W-wa Śródmieście
+    - [36103, 36111] # W-wa Gdańska -> W-wa ZOO
     - [23309, 23333] # Ostrołęka -> Grabowo
     - [32623, 32607] # Płock Trzepowo -> Płock
     - [32326, 32201] # Kutno Azory -> Kutno
@@ -62,6 +64,5 @@
     - [59352, 242927] # Siedlec Trzebnicki -> Pierwoszów Miłocin
     - [55632, 55277]  # Sędzisław -> Kamienna Góra
   pairs_to_ignore:
-    - [58347, 58172]  # Jelcz-Laskowice -> Jelcz Miłoszyce
-    - [58172, 58347]  # Jelcz Miłoszyce -> Jelcz-Laskowice
+    - [58347, 58172]  # Jelcz-Laskowice - Jelcz Miłoszyce
   force_for_conflicting: true
