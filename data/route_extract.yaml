@@ -7,10 +7,6 @@ KS:
     - route_code: "S5"
       select:
         - {number: '44323'}
-    - route_code: "S1"
-      select:
-        - {number: '44200'}
-        - {number: '44202'}
     - route_code: '\1'
       select: [{name: '/(S[0-9]{1,2})'}]
     - route_code: '\1'
@@ -203,6 +199,13 @@ KD:
         - passes_through: [53009]  # Legnica
         - passes_through: [59048]  # Środa Śląska
         - passes_through: [51920]  # Gierałtów Wykroty
+
+KM:
+  routes:
+    - route_code: 'RE3'
+      select: [{number: '93410/1'}]
+    - route_code: ''
+      select: [{retain: true}]
 
 KW:
   routes:
