@@ -4,6 +4,8 @@ KS:
       select:
         - {name: 'ZSSK'}
         - {name: 'ESKO S7'}
+        - {number: '44050/1'}
+        - {number: '44052/3'}
     - route_code: "S1"
       select:
         - {number: '44054'}

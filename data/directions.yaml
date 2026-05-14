@@ -36,6 +36,7 @@
     - [80416, 79236]  # Kraków Gł. -> Kraków Batowice
     - [80416, 280603] # Kraków Gł. -> Kraków Piastów
     - [76687, 76711]  # Hucisko -> Kurów Suski
+    - [179275, 82404]  # Plaveč -> Muszyna
   force_for_conflicting: true
 
 
