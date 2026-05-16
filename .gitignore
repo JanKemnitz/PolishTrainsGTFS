@@ -10,4 +10,5 @@ polish_trains*.json
 .vscode/*
 prop/*
 !prop/Dockerfile
+!prop/entrypoint.sh
 .dockerignore
