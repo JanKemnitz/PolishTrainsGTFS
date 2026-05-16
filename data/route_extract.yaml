@@ -4,8 +4,11 @@ KS:
       select:
         - {name: 'ZSSK'}
         - {name: 'ESKO S7'}
+        - {number: '44050/1'}
+        - {number: '44052/3'}
     - route_code: "S1"
       select:
+        - {number: '44202'}
         - {number: '44054'}
         - {number: '44057'}
     - route_code: "S5"
@@ -208,6 +211,8 @@ KM:
   routes:
     - route_code: 'RE3'
       select: [{number: '93410/1'}]
+    - route_code: 'R7'
+      select: [{number: '19245'}]
     - route_code: ''
       select: [{retain: true}]
 
