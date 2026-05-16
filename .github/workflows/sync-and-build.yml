@@ -1,0 +1,90 @@
+name: Sync Upstream, Build and Push Docker Image
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch: 
+
+env:
+  UPSTREAM_URL: "https://github.com/MKuranowski/PolishTrainsGTFS.git" 
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/kw-trains
+
+jobs:
+  sync-and-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # Required to push merged commits
+      packages: write   # Required to push images to GHCR
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+      - name: Sync upstream with main and merge to kw
+        id: sync
+        run: |
+          git remote add upstream ${{ env.UPSTREAM_URL }}
+          git fetch upstream main
+          
+          git fetch origin main:main
+          git checkout main
+          
+          git merge upstream/main -m "Merge upstream/main into main"
+          git push origin main
+          
+          git checkout kw
+          
+          OLD_HASH=$(git rev-parse HEAD)
+          
+          git merge main -m "Merge main into kw (Automatic sync from upstream)"
+          git push origin kw
+          
+          # Check if any new commits were merged
+          NEW_HASH=$(git rev-parse HEAD)
+          if [ "$OLD_HASH" != "$NEW_HASH" ]; then
+            echo "changes_merged=true" >> "$GITHUB_OUTPUT"
+            echo "Branch 'kw' has been updated. Ready for the build."
+          else
+            echo "changes_merged=false" >> "$GITHUB_OUTPUT"
+            echo "No new changes in upstream. Skipping build unless triggered by workflow_dispatch."
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.sync.outputs.changes_merged == 'true' || github.event_name == 'workflow_dispatch'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        if: steps.sync.outputs.changes_merged == 'true' || github.event_name == 'workflow_dispatch'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        if: steps.sync.outputs.changes_merged == 'true' || github.event_name == 'workflow_dispatch'
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build and push Docker image
+        if: steps.sync.outputs.changes_merged == 'true' || github.event_name == 'workflow_dispatch'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: prop/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

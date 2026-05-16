@@ -9,4 +9,5 @@ polish_trains*.pb
 polish_trains*.json
 .vscode/*
 prop/*
+!prop/Dockerfile
 .dockerignore
