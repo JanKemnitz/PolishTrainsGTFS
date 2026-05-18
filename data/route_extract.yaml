@@ -14,6 +14,9 @@ KS:
     - route_code: "S5"
       select:
         - {number: '44323'}
+    - route_code: "S6"
+      select:
+        - {number: '446008'}
     - route_code: '\1'
       select: [{name: '/(S[0-9]{1,2})'}]
     - route_code: '\1'
@@ -207,12 +210,31 @@ KD:
         - passes_through: [59048]  # Środa Śląska
         - passes_through: [51920]  # Gierałtów Wykroty
 
+    # === Fallback Rules ===
+    # The stations below are extremely ambiguous, so need to be used as last resort
+
+    - route_code: "D91"
+      select:
+        - passes_through: [265743]  # Świdnica Zawiszów
+
 KM:
   routes:
     - route_code: 'RE3'
       select: [{number: '93410/1'}]
+    - route_code: 'R3'
+      select: [{number: '19212/3'}]
     - route_code: 'R7'
-      select: [{number: '19245'}]
+      select:
+        - {number: '11240'}
+        - {number: '11263'}
+        - {number: '11265'}
+        - {number: '19245'}
+        - {number: '19248'}
+        - {number: '19250'}
+        - {number: '19252'}
+        - {number: '19254'}
+        - {number: '19258'}
+        - {number: '19263'}
     - route_code: ''
       select: [{retain: true}]
 
