@@ -183,7 +183,7 @@ func canRetry(err error) bool {
 	return (errors.Is(err, syscall.ECONNRESET) ||
 		errors.Is(err, os.ErrDeadlineExceeded) ||
 		strings.Contains(str, "connection reset by peer") ||
-		(strings.Contains(str, "read udp") && strings.Contains(str, "i/o timeout")))
+		strings.Contains(str, "i/o timeout"))
 }
 
 func canBackoff(err error) bool {
