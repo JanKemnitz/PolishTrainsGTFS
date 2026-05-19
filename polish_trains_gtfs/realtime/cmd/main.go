@@ -182,8 +182,7 @@ func canRetry(err error) bool {
 	str := err.Error()
 	return (errors.Is(err, syscall.ECONNRESET) ||
 		errors.Is(err, os.ErrDeadlineExceeded) ||
-		strings.Contains(str, "connection reset by peer") ||
-		strings.Contains(str, "i/o timeout"))
+		strings.Contains(str, "connection reset by peer"))
 }
 
 func canBackoff(err error) bool {
@@ -194,7 +193,9 @@ func canBackoff(err error) bool {
 			return true
 		}
 	}
-	return false
+
+	str := err.Error()
+	return strings.Contains(str, "i/o timeout")
 }
 
 func initJsonOutput() {
