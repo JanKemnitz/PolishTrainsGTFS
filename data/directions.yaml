@@ -37,6 +37,7 @@
     - [80416, 280603] # Kraków Gł. -> Kraków Piastów
     - [76687, 76711]  # Hucisko -> Kurów Suski
     - [179275, 82404]  # Plaveč -> Muszyna
+    - [80333, 235879]  # Kraków Mydlniki -> Kraków Lotnisko, some weird replacement buses
   force_for_conflicting: true
 
 
