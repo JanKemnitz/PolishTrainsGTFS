@@ -157,7 +157,7 @@ class LoadSchedules(Task):
             (trip_id, route_id, calendar_id, display_number, extra_fields),
         )
 
-        route_stations = cast(list[json.Object], r["st"])
+        route_stations = cast(list[json.Object], r.get("st", []))
         route_stations.sort(key=itemgetter("ord"))
         for i, route_station in enumerate(route_stations):
             self.process_route_stop(db, trip_id, i, route_station)
@@ -256,12 +256,15 @@ class LoadSchedules(Task):
         # Collect all unique numbers from the route stops. Note that the order matters.
         international_number = get_fallback(route, "idn", "ian", default="")
         numbers = set[str]()
-        for s in route["st"]:
-            a = get_fallback(s, "dtn", "atn", default="").lstrip("0")
-            is_invalid = "brak" in a or "/" in a
-            is_international = a == international_number or len(a) <= 3
-            if a and not is_invalid and not is_international:
-                numbers.add(a)
+        if stations := route.get("st"):
+            for s in stations:
+                a = get_fallback(s, "dtn", "atn", default="").lstrip("0")
+                is_invalid = "brak" in a or "/" in a
+                is_international = a == international_number or len(a) <= 3
+                if a and not is_invalid and not is_international:
+                    numbers.add(a)
+        else:
+            numbers.add(route["nn"])
 
         # XXX: Hotfix for longer, undetected international numbers
         # In particular: [1014, 41022, 41023] and [14022, 14023, 1014]
@@ -283,7 +286,9 @@ class LoadSchedules(Task):
                 return fallback
 
     def resolve_route_code(self, route: json.Object) -> str:
-        categories = {c for s in route["st"] if (c := get_fallback(s, "dcc", "acc", default=""))}
+        categories = {
+            c for s in route.get("st", ()) if (c := get_fallback(s, "dcc", "acc", default=""))
+        }
         if categories:
             return "/".join(sorted(categories))
         else:
