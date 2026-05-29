@@ -23,6 +23,15 @@ KD:
   disregard_stops_up_to: 60103
 
   routes:
+
+    # === Named Rapid Services ===
+
+    - route_code: "S"
+      select: [{name: '(?i)^KD Sprinter'}]
+
+    - route_code: "P"
+      select: [{name: '(?i)^KD Premium'}]
+
     # === Branch Lines ===
 
     - route_code: "Os"

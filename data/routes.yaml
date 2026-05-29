@@ -209,6 +209,16 @@ agencies:
         long_name: "Wałbrzych — Kłodzko — Kudowa-Zdrój"
         color: "AC20A4"
 
+      - id: "KD_S"
+        short_name: "KD Sprinter"
+        long_name: "Koleje Dolnośląskie - Sprinter"
+        color: "F8CC00"
+
+      - id: "KD_P"
+        short_name: "KD Premium"
+        long_name: "Koleje Dolnośląskie - Premium"
+        color: "F8CC00"
+
       - id: "KD"
         match: [{}]
         short_name: "KD"
@@ -632,17 +642,17 @@ agencies:
     routes:
       - id: "LKA_LS"
         match: [{short_name: "*ŁS*"}]
-        short_name: "ŁKA S"
+        short_name: "ŁS"
         long_name: "Łódzka Kolej Aglomeracyjna - Sprinter"
         color: "E4010B"
       - id: "LKA_LP"
         match: [{short_name: "*ŁP*"}]
-        short_name: "ŁKA P"
+        short_name: "ŁP"
         long_name: "Łódzka Kolej Aglomeracyjna - Przyspieszony"
         color: "E4010B"
       - id: "LKA"
         match: [{}]
-        short_name: "ŁKA"
+        short_name: "Ł"
         long_name: "Łódzka Kolej Aglomeracyjna"
         color: "FFD600"
 

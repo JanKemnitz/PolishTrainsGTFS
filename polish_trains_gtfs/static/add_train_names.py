@@ -29,7 +29,7 @@ LOWER_CASE_WORDS: Sequence[re.Pattern[str]] = [
 
 INVALID_NAMES: Mapping[str, Sequence[re.Pattern[str]]] = {
     # Key "" can be used to apply a pattern to all agencies
-    "KD": [re.compile(r"^DKA$")],
+    "KD": [re.compile(r"^DKA$"), re.compile(r"^KD (Sprinter|Premium)\s*", re.I)],
     "KS": [re.compile(r"^S[0-9S/]+\s*")],
     "KW": [re.compile(r"^PKM[0-9](?:/PKM[0-9])*\s*")],
     "LEO": [re.compile(r"^LEO EXPRESS$", re.I)],
