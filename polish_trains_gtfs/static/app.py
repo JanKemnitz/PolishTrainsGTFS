@@ -157,8 +157,8 @@ class PolishTrainsGTFS(App):
                 LoadSchedules(),
                 *external_tasks,
                 ExecuteSQL(
-                    statement="DELETE FROM agencies WHERE agency_id = 'WKD'",
-                    task_name="DropWKD",
+                    statement="DELETE FROM agencies WHERE agency_id IN ('WKD', 'ODEG')",
+                    task_name="DropUnusedAgencies",
                 ),
                 RemoveUnusedEntities(),
                 AddEntity(
@@ -192,7 +192,31 @@ class PolishTrainsGTFS(App):
                         "UPDATE stop_times SET platform = 'BUS' "
                         "WHERE platform = '' AND json_extract(extra_fields_json, '$.plk_category_code') = 'BUS'"
                     ),
-                    task_name="FixMissingBusPlatforms",
+                    task_name="FixMissingBusPlatformsFromCategory",
+                ),
+                ExecuteSQL(
+                    statement=(
+                        "UPDATE stop_times SET platform = 'BUS' "
+                        # where there's no platform at a disembarking-only station
+                        "WHERE platform = '' AND json_extract(extra_fields_json, '$.plk_stop_type') = '2' "
+                        # and the previous defined platform was "BUS"
+                        "AND ("
+                        "  SELECT platform FROM stop_times alt"
+                        "  WHERE alt.trip_id = stop_times.trip_id"
+                        "  AND alt.stop_sequence < stop_times.stop_sequence"
+                        "  AND alt.platform != ''"
+                        "  ORDER BY alt.stop_sequence DESC LIMIT 1"
+                        ") = 'BUS' "
+                        # and the next defined platform is "BUS" or does not exist
+                        "AND COALESCE(("
+                        "  SELECT platform FROM stop_times alt"
+                        "  WHERE alt.trip_id = stop_times.trip_id"
+                        "  AND alt.stop_sequence > stop_times.stop_sequence"
+                        "  AND alt.platform != ''"
+                        "  ORDER BY alt.stop_sequence ASC LIMIT 1"
+                        "), 'BUS') = 'BUS'"
+                    ),
+                    task_name="FixMissingBusPlatformsForDisembarkingOnly",
                 ),
                 SplitBusLegs(),
                 RemoveUnusedEntities(),

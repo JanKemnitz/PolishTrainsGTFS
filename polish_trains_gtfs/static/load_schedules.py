@@ -202,15 +202,16 @@ class LoadSchedules(Task):
         arr_track = s.get("atr", "")
         dep_track = s.get("dtr", "")
 
-        extra_fields = json.dumps(
-            {
-                "track": dep_track or arr_track,
-                "plk_category_code": get_fallback(s, "dcc", "acc", default=""),
-                "plk_sequence": str(plk_sequence),
-                "arrival_platform": arr_platform,
-                "arrival_track": arr_track,
-            }
-        )
+        extra_fields: dict[str, str] = {
+            "track": dep_track or arr_track,
+            "plk_category_code": get_fallback(s, "dcc", "acc", default=""),
+            "plk_sequence": str(plk_sequence),
+            "arrival_platform": arr_platform,
+            "arrival_track": arr_track,
+        }
+
+        if (plk_stop_type := s.get("sti")) is not None:
+            extra_fields["plk_stop_type"] = str(plk_stop_type)
 
         db.raw_execute(
             "INSERT INTO stop_times (trip_id, stop_sequence, stop_id, arrival_time, "
@@ -222,7 +223,7 @@ class LoadSchedules(Task):
                 arrival,
                 departure,
                 dep_platform or arr_platform,
-                extra_fields,
+                json.dumps(extra_fields),
             ),
         )
 

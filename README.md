@@ -1,8 +1,7 @@
 PolishTrainsGTFS
 ================
 
-Creates a single, GTFS and GTFS-Realtime feeds for all Polish trains coordinated by [PKP PLK](https://www.plk-sa.pl/)
-(this excludes [WKD](https://wkd.com.pl/) or [UBB](https://www.ubb-online.com/)), including:
+Creates a single, GTFS and GTFS-Realtime feeds for all Polish trains coordinated by [PKP PLK](https://www.plk-sa.pl/), including:
 
 - [PolRegio](https://polregio.pl/)
 - [PKP Intercity](https://www.intercity.pl/)
@@ -20,6 +19,9 @@ Creates a single, GTFS and GTFS-Realtime feeds for all Polish trains coordinated
 
 
 Data comes from the [Otwarte Dane Kolejowe API from PKP PLK](https://pdp-api.plk-sa.pl/).
+
+Notable exceptions include: [WKD](https://wkd.com.pl/) (use data from <https://mkuran.pl/gtfs/>),
+[UBB](https://www.ubb-online.com/) and [ODEG](https://www.odeg.de/) (use German data for those).
 
 
 Data Caveats
