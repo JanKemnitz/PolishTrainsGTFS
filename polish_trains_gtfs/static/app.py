@@ -156,8 +156,8 @@ class PolishTrainsGTFS(App):
                 LoadSchedules(),
                 *external_tasks,
                 ExecuteSQL(
-                    statement="DELETE FROM agencies WHERE agency_id = 'WKD'",
-                    task_name="DropWKD",
+                    statement="DELETE FROM agencies WHERE agency_id IN ('WKD', 'ODEG')",
+                    task_name="DropUnusedAgencies",
                 ),
                 RemoveUnusedEntities(),
                 AddEntity(
