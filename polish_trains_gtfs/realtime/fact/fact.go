@@ -159,6 +159,10 @@ type TripUpdate struct {
 	Detour    bool              `json:"detour,omitempty"`
 }
 
+func (t *TripUpdate) IsEmpty() bool {
+	return len(t.StopTimes) == 0 && !t.Cancelled
+}
+
 func (t *TripUpdate) AsGTFS() *gtfs.FeedEntity {
 	g := new(gtfs.FeedEntity)
 	g.Id = ptr(t.ID)
