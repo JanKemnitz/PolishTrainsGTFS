@@ -52,6 +52,7 @@
   outbound_pairs:
     - [30601, 29892] # Poznań Główny -> Poznań Grabary
     - [42879, 42606] # Lasocice -> Leszno
+    - [44701, 44750] # Jarocin -> Żerków
   force_for_conflicting: true
 
 # Wrocław area: "0" is westbound from Wrocław Główny
