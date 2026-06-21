@@ -66,6 +66,7 @@
     - [44305, 44511]  # Rawicz -> Bojanowo
     - [59352, 242927] # Siedlec Trzebnicki -> Pierwoszów Miłocin
     - [55632, 55277]  # Sędzisław -> Kamienna Góra
+    - [51995, 51847]  # Jerzmanki -> Zgorzelec
   pairs_to_ignore:
     - [58347, 58172]  # Jelcz-Laskowice - Jelcz Miłoszyce
   force_for_conflicting: true
