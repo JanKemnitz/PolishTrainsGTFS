@@ -7,6 +7,8 @@ KS:
     - route_code: "S1"
       select:
         - {number: '44202'}
+        - {number: '44212'}
+        - {number: '44214'}
     - route_code: "S5"
       select:
         - {number: '44051'}
@@ -237,5 +239,13 @@ PR:
   routes:
     - route_code: '\1'
       select: [{name: '^(PKM[0-9])$'}]
+    - route_code: ''
+      select: [{retain: true}]
+
+KM:
+  routes:
+    - route_code: 'R7'
+      select:
+        - {number: '19217'}
     - route_code: ''
       select: [{retain: true}]
