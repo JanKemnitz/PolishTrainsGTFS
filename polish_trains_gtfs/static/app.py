@@ -181,9 +181,12 @@ class PolishTrainsGTFS(App):
                 ExecuteSQL(
                     statement=(
                         "UPDATE stop_times SET arrival_time = arrival_time - 3600, "
-                        "departure_time = departure_time - 3600 WHERE stop_id = '179200'"
+                        "departure_time = departure_time - 3600 WHERE stop_id IN ("
+                        "  SELECT stop_id FROM stops"
+                        "  WHERE json_extract(extra_fields_json, '$.country') IN ('LT', 'BY', 'UA')"
+                        ")"
                     ),
-                    task_name="FixTimesAtMockava",
+                    task_name="FixEasternEuropeanTime",
                 ),
                 AddTrainNames(),
                 GenerateTripHeadsign(),
