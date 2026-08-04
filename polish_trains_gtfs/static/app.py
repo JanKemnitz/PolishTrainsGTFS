@@ -12,6 +12,7 @@ from . import external
 from .add_train_names import AddTrainNames
 # from .assign_direction_id import AssignDirectionID
 from .curate_routes import CurateRoutes
+from .deduplicate_consecutive_times import DeduplicateConsecutiveTimes
 from .extract_routes import ExtractRoutes
 from .generate_shapes import GenerateBusShapes, GenerateShapes
 from .load_bus_stops import LoadBusStops
@@ -178,6 +179,7 @@ class PolishTrainsGTFS(App):
                 CurateRoutes(),
                 LoadStops(),
                 ShiftNegativeTimes(),
+                DeduplicateConsecutiveTimes(),
                 ExecuteSQL(
                     statement=(
                         "UPDATE stop_times SET arrival_time = arrival_time - 3600, "
