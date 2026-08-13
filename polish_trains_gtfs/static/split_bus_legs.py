@@ -22,7 +22,7 @@ class BusRouteCuration(TypedDict):
 class SplitBusLegs(SplitTripLegs):
     def __init__(self, r: str = "bus_routes.yaml") -> None:
         super().__init__(
-            replacement_bus_short_name_pattern=re.compile(r"\bZKA\b", re.I),
+            replacement_bus_short_name_pattern=re.compile(r"\bZKA\b", re.IGNORECASE),
             leg_trip_id_infix="_LEG",
         )
         self.r = r
