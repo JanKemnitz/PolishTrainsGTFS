@@ -146,9 +146,7 @@ class PolishTrainsGTFS(App):
                     headers={"X-Api-Key": apikey},
                     params={"dateFrom": start_date.isoformat(), "dateTo": end_date.isoformat()},
                 ),
-                "pl_rail_map.osm": HTTPResource.get(
-                    "https://raw.githubusercontent.com/MKuranowski/PLRailMap/master/plrailmap.osm"
-                ),
+                "geo.osm": LocalResource("data/geo.osm"),
                 "bus_routes.yaml": LocalResource("data/bus_routes.yaml"),
                 "directions.yaml": LocalResource("data/directions.yaml"),
                 "routes.yaml": LocalResource("data/routes.yaml"),
@@ -241,8 +239,8 @@ class PolishTrainsGTFS(App):
                     ),
                     task_name="SetStopTimezone",
                 ),
-                GenerateShapes("pl_rail_map.osm", "shapes.yaml"),
-                GenerateBusShapes("pl_rail_map.osm"),
+                GenerateShapes("geo.osm", "shapes.yaml"),
+                GenerateBusShapes("geo.osm"),
                 SaveGTFS(GTFS_HEADERS, args.output, ensure_order=True),
             ],
         )
