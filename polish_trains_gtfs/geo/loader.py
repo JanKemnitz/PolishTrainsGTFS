@@ -60,6 +60,10 @@ class StationDataLoader(SAXContentHandler):
         self._in_feature = ""
 
     def startElement(self, name: str, attrs: SAXAttributes) -> None:
+        # Ignore deleted elements
+        if attrs.get("action") == "delete":
+            return
+
         if name == "node":
             self._in_feature = "n"
             self._feature_id = int(attrs["id"])
