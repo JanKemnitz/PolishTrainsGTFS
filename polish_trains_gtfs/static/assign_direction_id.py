@@ -162,12 +162,12 @@ def _trips_of_config(db: DBConnection, c: Config) -> Iterable[str]:
     routes = list[str]()
 
     # First, transform all agency_ids into routes
-    for agency_id in c.get("agencies", tuple()):
+    for agency_id in c.get("agencies", ()):
         with db.raw_execute("SELECT route_id FROM routes WHERE agency_id = ?", (agency_id,)) as q:
             routes.extend(cast(str, r[0]) for r in q)
 
     # Second, add all explicit routes
-    routes.extend(c.get("routes", tuple()))
+    routes.extend(c.get("routes", ()))
 
     # Third, generate trip_ids
     for route_id in routes:
