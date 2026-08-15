@@ -70,10 +70,10 @@ class LoadBusStops(Task):
     def execute(self, r: TaskRuntime) -> None:
         self.stop_locations = self.load_stop_locations(r.db)
         stations_data = load_stations(r.resources["geo.osm"].stored_at)
-        bus_trips_by_stops = self.group_bus_trips(self.load_bus_trips(r.db))
+        bus_trips_by_station = self.group_bus_trips(self.load_bus_trips(r.db))
         uncurated_stations = list[str]()
 
-        for station_id, trips in bus_trips_by_stops.items():
+        for station_id, trips in bus_trips_by_station.items():
             if (station := stations_data.get(station_id)) and station.bus_stops:
                 with r.db.transaction():
                     self.curate_bus_stops(r.db, station_id, station.bus_stops, trips)
@@ -92,8 +92,9 @@ class LoadBusStops(Task):
         q = cast(
             Iterable[tuple[str, int, str]],
             db.raw_execute(
-                "SELECT trip_id, stop_sequence, stop_id "
+                "SELECT trip_id, stop_sequence, coalesce(parent_station, stop_id) "
                 "FROM stop_times "
+                "LEFT JOIN stops USING (stop_id) "
                 "LEFT JOIN trips USING (trip_id) "
                 "LEFT JOIN routes USING (route_id) "
                 "WHERE routes.type = 3 "
@@ -171,71 +172,38 @@ class LoadBusStops(Task):
         station_id: str,
         new_stops: Mapping[str, BusStop],
     ) -> None:
-        preserve_train = has_train_departures(db, station_id)
-        existing_stop = db.retrieve_must(Stop, station_id)
-        new_extra_fields = json.dumps({"country": existing_stop.get_extra_field("country") or ""})
+        station = db.retrieve_must(Stop, station_id)
+        country = station.get_extra_field("country") or ""
 
-        if preserve_train:
-            rail_id = f"{station_id}_RAIL"
+        # Move the station location if there are only bus departures,
+        # and the bus stops spread apart geographically.
+        if (
+            not has_train_departures(db, station_id)
+            and bbox_diagonal_dist(new_stops.values()) <= 500
+        ):
+            station.lat = round(mean(i.lat for i in new_stops.values()), 6)
+            station.lon = round(mean(i.lon for i in new_stops.values()), 6)
             db.raw_execute(
-                "UPDATE stops SET stop_id = ? WHERE stop_id = ?",
-                (rail_id, station_id),
+                "UPDATE stops SET lat = ?, lon = ? WHERE stop_id = ? OR stop_id = ?",
+                (station.lat, station.lon, station_id, f"{station_id}_FALLBACK"),
             )
-            db.raw_execute(
-                "INSERT INTO stops (stop_id, name, lat, lon, location_type, extra_fields_json) "
-                "VALUES (?, ?, ?, ?, 1, ?)",
-                (
-                    station_id,
-                    existing_stop.name,
-                    existing_stop.lat,
-                    existing_stop.lon,
-                    existing_stop.extra_fields_json,
-                ),
-            )
-            db.raw_execute(
-                "UPDATE stops SET parent_station = ?, extra_fields_json = ? WHERE stop_id = ?",
-                (station_id, new_extra_fields, rail_id),
-            )
-            db.raw_execute_many(
-                "INSERT INTO stops (stop_id, name, lat, lon, parent_station, extra_fields_json) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    (gtfs_id, existing_stop.name, i.lat, i.lon, station_id, new_extra_fields)
-                    for gtfs_id, i in new_stops.items()
-                ),
-            )
-        elif len(new_stops) > 1:
-            # Move the station location only if the bus stops are not spread geographically.
-            # When they are spread apart quite far, the station pin is likely to land in the
-            # middle of nowhere, in some very random place. It's better to keep it at the original
-            # station's location.
-            if bbox_diagonal_dist(new_stops.values()) <= 500:
-                lat = round(mean(i.lat for i in new_stops.values()), 6)
-                lon = round(mean(i.lon for i in new_stops.values()), 6)
-                db.raw_execute(
-                    "UPDATE stops SET lat = ?, lon = ?, location_type = 1 WHERE stop_id = ?",
-                    (lat, lon, station_id),
-                )
-            else:
-                db.raw_execute(
-                    "UPDATE stops SET location_type = 1 WHERE stop_id = ?",
-                    (station_id,),
-                )
 
-            db.raw_execute_many(
-                "INSERT INTO stops (stop_id,name,lat,lon,parent_station,extra_fields_json) "
-                "VALUES (?,?,?,?,?,?)",
-                (
-                    (gtfs_id, existing_stop.name, i.lat, i.lon, station_id, new_extra_fields)
-                    for gtfs_id, i in new_stops.items()
-                ),
-            )
-        else:
-            gtfs_id, stop = next(iter(new_stops.items()))
-            db.raw_execute(
-                "UPDATE stops SET stop_id = ?, lat = ?, lon = ? WHERE stop_id = ?",
-                (gtfs_id, stop.lat, stop.lon, station_id),
-            )
+        db.create_many(
+            Stop,
+            (
+                Stop(
+                    id=gtfs_id,
+                    name=station.name,
+                    lat=bus_stop.lat,
+                    lon=bus_stop.lon,
+                    wheelchair_boarding=None,
+                    location_type=Stop.LocationType.STOP,
+                    parent_station=station_id,
+                    extra_fields_json=json.dumps({"country": country, "stop_access": "1"}),
+                )
+                for gtfs_id, bus_stop in new_stops.items()
+            ),
+        )
 
 
 class GeoTripMatcher:
@@ -312,12 +280,13 @@ def get_stop_name(db: DBConnection, stop_id: str) -> str:
     # fmt: on
 
 
-def has_train_departures(db: DBConnection, stop_id: str) -> bool:
+def has_train_departures(db: DBConnection, station_id: str) -> bool:
     with db.raw_execute(
-        "SELECT 1 FROM stop_times LEFT JOIN trips USING (trip_id) "
-        "LEFT JOIN routes USING (route_id) WHERE stop_id = ? AND type = 2 "
+        "SELECT 1 FROM stop_times "
+        "JOIN trips USING (trip_id) JOIN routes USING (route_id) "
+        "WHERE stop_id LIKE concat(?, '%') AND routes.type = 2 "
         "LIMIT 1",
-        (stop_id,),
+        (station_id,),
     ) as q:
         return q.one() is not None
 

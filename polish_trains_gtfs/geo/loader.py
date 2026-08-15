@@ -94,7 +94,7 @@ class StationDataLoader(SAXContentHandler):
             elif public_transport == "platform":
                 self._on_platform()
 
-            elif public_transport == "subway_entrance":
+            elif railway == "subway_entrance":
                 self._on_exit()
 
             elif public_transport == "stop_position":

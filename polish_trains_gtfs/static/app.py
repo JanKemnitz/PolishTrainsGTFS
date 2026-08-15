@@ -6,7 +6,7 @@ from typing import cast
 
 from impuls import App, HTTPResource, LocalResource, Pipeline, PipelineOptions
 from impuls.model import Date, Stop
-from impuls.tasks import AddEntity, ExecuteSQL, GenerateTripHeadsign, RemoveUnusedEntities, SaveGTFS
+from impuls.tasks import AddEntity, ExecuteSQL, GenerateTripHeadsign, SaveGTFS
 
 from . import external
 from .add_train_names import AddTrainNames
@@ -17,7 +17,8 @@ from .extract_routes import ExtractRoutes
 from .generate_shapes import GenerateBusShapes, GenerateShapes
 from .load_bus_stops import LoadBusStops
 from .load_schedules import LoadSchedules
-from .load_stops import LoadStops
+from .load_stations import LoadStations
+from .remove_unused_entities import RemoveUnusedEntities
 from .shift_negative_times import ShiftNegativeTimes
 from .split_bus_legs import SplitBusLegs
 from .util.apikey import get_apikey
@@ -61,13 +62,17 @@ GTFS_HEADERS = {
     "stops.txt": (
         "stop_id",
         "stop_name",
+        "platform_code",
         "stop_lat",
         "stop_lon",
         "location_type",
         "parent_station",
         "stop_timezone",
+        "wheelchair_boarding",
+        "stop_access",
         "country",
         "plk_secondary_id",
+        "only_platforms",
     ),
     "stop_times.txt": (
         "trip_id",
@@ -161,35 +166,8 @@ class PolishTrainsGTFS(App):
                     task_name="DropUnusedAgencies",
                 ),
                 RemoveUnusedEntities(),
-                AddEntity(
-                    entity=Stop("34868", "Warszawa Zachodnia (Peron 9)", 0, 0),
-                    task_name="AddWarszawaZachodniaPeron9Stop",
-                ),
-                ExecuteSQL(
-                    statement=(
-                        "UPDATE stop_times SET stop_id = '34868' "
-                        "WHERE stop_id = '33506' AND platform = '9'"
-                    ),
-                    task_name="MoveDeparturesToWarszawaZachodniaPeron9",
-                ),
-                ExtractRoutes(),
-                CurateRoutes(),
-                LoadStops(),
                 ShiftNegativeTimes(),
                 DeduplicateConsecutiveTimes(),
-                ExecuteSQL(
-                    statement=(
-                        "UPDATE stop_times SET arrival_time = arrival_time - 3600, "
-                        "departure_time = departure_time - 3600 WHERE stop_id IN ("
-                        "  SELECT stop_id FROM stops"
-                        "  WHERE json_extract(extra_fields_json, '$.country') IN ('LT', 'BY', 'UA')"
-                        ")"
-                    ),
-                    task_name="FixEasternEuropeanTime",
-                ),
-                AddTrainNames(),
-                GenerateTripHeadsign(),
-                AssignDirectionID(),
                 ExecuteSQL(
                     statement=(
                         "UPDATE stop_times SET platform = 'BUS' "
@@ -221,9 +199,36 @@ class PolishTrainsGTFS(App):
                     ),
                     task_name="FixMissingBusPlatformsForDisembarkingOnly",
                 ),
+                AddEntity(
+                    entity=Stop("34868", "Warszawa Zachodnia (Peron 9)", 0, 0),
+                    task_name="AddWarszawaZachodniaPeron9Stop",
+                ),
+                ExecuteSQL(
+                    statement=(
+                        "UPDATE stop_times SET stop_id = '34868' "
+                        "WHERE stop_id = '33506' AND platform = '9'"
+                    ),
+                    task_name="MoveDeparturesToWarszawaZachodniaPeron9",
+                ),
+                ExtractRoutes(),
+                CurateRoutes(),
+                LoadStations(),
+                ExecuteSQL(
+                    statement=(
+                        "UPDATE stop_times SET arrival_time = arrival_time - 3600, "
+                        "departure_time = departure_time - 3600 WHERE stop_id IN ("
+                        "  SELECT stop_id FROM stops"
+                        "  WHERE json_extract(extra_fields_json, '$.country') IN ('LT', 'BY', 'UA')"
+                        ")"
+                    ),
+                    task_name="FixEasternEuropeanTime",
+                ),
+                AddTrainNames(),
+                GenerateTripHeadsign(),
+                AssignDirectionID(),
                 SplitBusLegs(),
-                RemoveUnusedEntities(),
                 LoadBusStops(),
+                RemoveUnusedEntities(preserve_fallback_stops=True),
                 ExecuteSQL(
                     statement=(
                         "UPDATE stops SET extra_fields_json = json_set("

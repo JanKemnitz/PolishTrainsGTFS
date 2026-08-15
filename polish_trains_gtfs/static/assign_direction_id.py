@@ -152,7 +152,9 @@ class _QueueItem:
     @classmethod
     def from_db(cls, trip_id: str, db: DBConnection) -> Self:
         with db.raw_execute(
-            "SELECT stop_id FROM stop_times WHERE trip_id = ? ORDER BY stop_sequence ASC",
+            "SELECT coalesce(parent_station, stop_id) "
+            "FROM stop_times JOIN stops USING (stop_id) "
+            "WHERE trip_id = ? ORDER BY stop_sequence ASC",
             (trip_id,),
         ) as query:
             return cls(trip_id, (cast(str, i[0]) for i in query))

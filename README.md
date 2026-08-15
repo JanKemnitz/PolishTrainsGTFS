@@ -28,6 +28,8 @@ Data Caveats
 ------------
 
 - Stop and shape data is collected manually, see [map data](#map-data-datageoosm).
+- Platforms with exactly the same lat and lon are deliberate - even if locations are the same, the differing `platform_code` is still useful. Contribute [map data](#map-data-datageoosm) to resolve this.
+- Unused fallback platforms are deliberate - they may be used by the realtime feed for trains on detours.
 - Timed connections and carriage transfers are not provided - they're missing from the PKP PLK API.
 - Platform and track info is missing at stops marked by PKP PLK as disembarking only.
 - International trains are kinda messed up. Bus replacement services are sometimes missing (and remain as trains). Sometimes, only partial routes are available (OEDG, NEB). Rarely, the agency is also incorrect (NEB trains to/from Kostrzyn are reported as operated by PolRegio).
