@@ -23144,12 +23144,7 @@
   <node id="11475" action="modify" lat="52.89612114898" lon="23.80636452556" version="1"/>
   <node id="11476" action="modify" lat="52.89718906514" lon="23.80818842769" version="1"/>
   <node id="11477" action="modify" lat="52.89802396309" lon="23.81026982188" version="1"/>
-  <node id="11478" action="modify" lat="52.73333256881" lon="23.58287750602" version="1">
-    <tag k="platforms" v="3;4;5"/>
-    <tag k="public_transport" v="stop_position"/>
-    <tag k="ref:station" v="25403"/>
-    <tag k="towards" v="fallback"/>
-  </node>
+  <node id="11478" action="modify" lat="52.73333256881" lon="23.58287750602" version="1"/>
   <node id="11479" action="modify" lat="52.73414138602" lon="23.58224986911" version="1"/>
   <node id="11480" action="modify" lat="52.73521978562" lon="23.58098386645" version="1"/>
   <node id="11481" action="modify" lat="52.73615524319" lon="23.57949255824" version="1"/>
@@ -81631,7 +81626,12 @@
     <tag k="ref" v="25403"/>
     <tag k="ref:ibnr" v="423"/>
   </node>
-  <node id="64063" action="modify" lat="52.73283882238" lon="23.58317791879" version="1"/>
+  <node id="64063" action="modify" lat="52.73283882238" lon="23.58317791879" version="1">
+    <tag k="platforms" v="3;4;5"/>
+    <tag k="public_transport" v="stop_position"/>
+    <tag k="ref:station" v="25403"/>
+    <tag k="towards" v="fallback"/>
+  </node>
   <node id="64064" action="modify" lat="52.73233857687" lon="23.58349441946" version="1"/>
   <node id="64065" action="modify" lat="52.73183182882" lon="23.58384847105" version="1"/>
   <node id="64066" action="modify" lat="52.73139329209" lon="23.58433663309" version="1"/>
