@@ -25,6 +25,11 @@ agencies:
         short_name: "EIC"
         long_name: "Express InterCity"
         color: "898989"
+      - id: "IC_ICN"
+        match: [{short_name: "*ICN*"}]
+        short_name: "ICN"
+        long_name: "Retro Nieśpieszny"
+        color: "556B2F"
       - id: "IC_IC"
         match: [{short_name: "*IC*"}]
         short_name: "IC"
@@ -208,6 +213,16 @@ agencies:
         short_name: "D96"
         long_name: "Wałbrzych — Kłodzko — Kudowa-Zdrój"
         color: "AC20A4"
+
+      - id: "KD_S"
+        short_name: "KD Sprinter"
+        long_name: "Koleje Dolnośląskie - Sprinter"
+        color: "F8CC00"
+
+      - id: "KD_P"
+        short_name: "KD Premium"
+        long_name: "Koleje Dolnośląskie - Premium"
+        color: "F8CC00"
 
       - id: "KD"
         match: [{}]
@@ -632,30 +647,19 @@ agencies:
     routes:
       - id: "LKA_LS"
         match: [{short_name: "*ŁS*"}]
-        short_name: "ŁKA S"
+        short_name: "ŁS"
         long_name: "Łódzka Kolej Aglomeracyjna - Sprinter"
         color: "E4010B"
       - id: "LKA_LP"
         match: [{short_name: "*ŁP*"}]
-        short_name: "ŁKA P"
+        short_name: "ŁP"
         long_name: "Łódzka Kolej Aglomeracyjna - Przyspieszony"
         color: "E4010B"
       - id: "LKA"
         match: [{}]
-        short_name: "ŁKA"
+        short_name: "Ł"
         long_name: "Łódzka Kolej Aglomeracyjna"
         color: "FFD600"
-
-  - id: "ODEG"
-    name: "Ostdeutsche Eisenbahn"
-    url: "https://www.odeg.de/"
-    phone: "+49 03581 764 89 10"
-    routes:
-      - id: "ODEG"
-        match: [{}]
-        short_name: "ODEG"
-        long_name: "Ostdeutsche Eisenbahn"
-        color: "007073"
 
   - id: "PW"
     name: "Parowozownia Wolsztyn"
@@ -849,6 +853,6 @@ agencies:
         color: "008AD0"
       - id: "SKMT_S1"
         short_name: "S1"
-        match: [{short_name: "*S2*"}]
+        match: [{short_name: "*S2*"}, {short_name: "*R22*"}]
         long_name: "Gdańsk Śródmieście — Gdynia Cisowa (— Wejherowo — Lębork)"
         color: "008AD0"

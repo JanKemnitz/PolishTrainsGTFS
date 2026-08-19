@@ -157,7 +157,7 @@ class LoadSchedules(Task):
             (trip_id, route_id, calendar_id, display_number, extra_fields),
         )
 
-        route_stations = cast(list[json.Object], r["st"])
+        route_stations = cast(list[json.Object], r.get("st", []))
         route_stations.sort(key=itemgetter("ord"))
         for i, route_station in enumerate(route_stations):
             self.process_route_stop(db, trip_id, i, route_station)
@@ -197,24 +197,42 @@ class LoadSchedules(Task):
         arrival = parse_time(arrival_time, arrival_day)
         departure = parse_time(departure_time, departure_day)
 
+        if departure < arrival:
+            self.logger.warning(
+                "Departure time is before arrival time on trip %s at stop %d (plk_seq %d)",
+                trip_id,
+                stop_id,
+                plk_sequence,
+            )
+            arrival = departure
+
         arr_platform = s.get("apl", "")
         dep_platform = s.get("dpl", "")
         arr_track = s.get("atr", "")
         dep_track = s.get("dtr", "")
 
-        extra_fields = json.dumps(
-            {
-                "track": dep_track or arr_track,
-                "plk_category_code": get_fallback(s, "dcc", "acc", default=""),
-                "plk_sequence": str(plk_sequence),
-                "arrival_platform": arr_platform,
-                "arrival_track": arr_track,
-            }
-        )
+        extra_fields: dict[str, str] = {
+            "track": dep_track or arr_track,
+            "plk_category_code": get_fallback(s, "dcc", "acc", default=""),
+            "plk_sequence": str(plk_sequence),
+            "arrival_platform": arr_platform,
+            "arrival_track": arr_track,
+        }
+
+        pickup_type = 0
+        drop_off_type = 0
+
+        if (plk_stop_type := s.get("sti")) is not None:
+            extra_fields["plk_stop_type"] = str(plk_stop_type)
+
+            if plk_stop_type == 1:  # pickup only
+                drop_off_type = 1
+            elif plk_stop_type == 2:  # drop off only
+                pickup_type = 1
 
         db.raw_execute(
             "INSERT INTO stop_times (trip_id, stop_sequence, stop_id, arrival_time, "
-            "departure_time, platform, extra_fields_json) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "departure_time, platform, pickup_type, drop_off_type, extra_fields_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 trip_id,
                 sequence,
@@ -222,7 +240,9 @@ class LoadSchedules(Task):
                 arrival,
                 departure,
                 dep_platform or arr_platform,
-                extra_fields,
+                pickup_type,
+                drop_off_type,
+                json.dumps(extra_fields),
             ),
         )
 
@@ -256,12 +276,15 @@ class LoadSchedules(Task):
         # Collect all unique numbers from the route stops. Note that the order matters.
         international_number = get_fallback(route, "idn", "ian", default="")
         numbers = set[str]()
-        for s in route["st"]:
-            a = get_fallback(s, "dtn", "atn", default="").lstrip("0")
-            is_invalid = "brak" in a or "/" in a
-            is_international = a == international_number or len(a) <= 3
-            if a and not is_invalid and not is_international:
-                numbers.add(a)
+        if stations := route.get("st"):
+            for s in stations:
+                a = get_fallback(s, "dtn", "atn", default="").lstrip("0")
+                is_invalid = "brak" in a or "/" in a
+                is_international = a == international_number or len(a) <= 3
+                if a and not is_invalid and not is_international:
+                    numbers.add(a)
+        else:
+            numbers.add(route["nn"])
 
         # XXX: Hotfix for longer, undetected international numbers
         # In particular: [1014, 41022, 41023] and [14022, 14023, 1014]
@@ -283,14 +306,16 @@ class LoadSchedules(Task):
                 return fallback
 
     def resolve_route_code(self, route: json.Object) -> str:
-        categories = {c for s in route["st"] if (c := get_fallback(s, "dcc", "acc", default=""))}
+        categories = {
+            c for s in route.get("st", ()) if (c := get_fallback(s, "dcc", "acc", default=""))
+        }
         if categories:
             return "/".join(sorted(categories))
         else:
             return route["ccs"]
 
     def get_trip_id(self, agency_id: str, schedule_id: str, order_id: str) -> str:
-        base = "_".join(("PLK", agency_id, schedule_id, order_id))
+        base = f"PLK_{agency_id}_{schedule_id}_{order_id}"
         id = find_non_conflicting_id(self.used_trip_ids, base, "_")
         if id != base:
             self.logger.warning("Non-unique trip_id: %s", base)

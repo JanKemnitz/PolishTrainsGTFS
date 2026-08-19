@@ -24,8 +24,11 @@ func TripUpdates(real *source.Operations, static *schedules.Package, stats *Stat
 		TripUpdates: make([]*fact.TripUpdate, 0, len(real.Trains)),
 	}
 	for _, t := range real.Trains {
-		if u := TripUpdate(t, static, stats); u != nil {
-			c.TripUpdates = append(c.TripUpdates, u...)
+		updates := TripUpdate(t, static, stats)
+		for _, u := range updates {
+			if !u.IsEmpty() {
+				c.TripUpdates = append(c.TripUpdates, u)
+			}
 		}
 	}
 	return c
@@ -169,7 +172,7 @@ func getDetourStopTimeUpdates(stops []*source.OperationTrainStop, canonicalStops
 		if stopID != "" && !stop.Cancelled {
 			updates = append(updates, &fact.StopTimeUpdate{
 				Sequence:  idx,
-				StopID:    stopID,
+				StopID:    stopID + "_FALLBACK",
 				Arrival:   time.Time(stop.LiveArrival),
 				Departure: time.Time(stop.LiveDeparture),
 				Confirmed: stop.Confirmed,

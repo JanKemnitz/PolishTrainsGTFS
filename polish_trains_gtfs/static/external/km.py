@@ -1,10 +1,10 @@
 # SPDX-FileCopyrightText: 2026 Mikołaj Kuranowski
 # SPDX-License-Identifier: MIT
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Callable
 from xml.sax import parse as sax_parse
 from xml.sax.handler import ContentHandler as SAXContentHandler
 from xml.sax.xmlreader import AttributesImpl
@@ -126,7 +126,7 @@ class SchedulesHandler(SAXContentHandler):
         if self.chars is not None:
             self.chars.append(content)
 
-    def startElement(self, name: str, attrs: AttributesImpl[str]) -> None:
+    def startElement(self, name: str, attrs: AttributesImpl) -> None:
         if name in {"number", "version", "symbol"}:
             self.chars = []
 

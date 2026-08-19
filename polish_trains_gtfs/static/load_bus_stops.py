@@ -1,22 +1,19 @@
 # SPDX-FileCopyrightText: 2026 Mikołaj Kuranowski
 # SPDX-License-Identifier: MIT
 
-from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import groupby
+from math import inf
 from operator import itemgetter
 from statistics import mean
 from typing import Self, cast
-from xml.sax import ContentHandler as XmlSaxContentHandler
-from xml.sax import parse as xml_sax_parse
-from xml.sax.xmlreader import AttributesImpl as XmlSaxAttributes
 
 from impuls import DBConnection, Task, TaskRuntime
 from impuls.model import Stop
-from impuls.tools.geo import initial_bearing
-from impuls.tools.types import StrPath
+from impuls.tools.geo import earth_distance_m, initial_bearing
 
+from ..geo import BusStop, load_stations
 from .util import json
 
 BEARING_CODE_TO_DEGREES = {
@@ -29,54 +26,6 @@ BEARING_CODE_TO_DEGREES = {
     "W": 270,
     "NW": 315,
 }
-
-
-@dataclass
-class BusStop:
-    station_id: str = ""
-    lat: float = 0.0
-    lon: float = 0.0
-    direction_hints: list[str] = field(default_factory=list[str])
-
-    @property
-    def gtfs_id(self) -> str:
-        if self.direction_hints == [] or self.direction_hints == ["*"]:
-            return f"{self.station_id}_BUS"
-        return f"{self.station_id}_BUS_{self.direction_hints[0]}"
-
-    def __bool__(self) -> bool:
-        return self.station_id != "" and self.lat != 0.0 and self.lon != 0.0
-
-
-class PLRailMapBusStopLoader(XmlSaxContentHandler):
-    def __init__(self) -> None:
-        super().__init__()
-        self.stops = defaultdict[str, list[BusStop]](list)
-        self.current_stop = BusStop()
-        self.is_stop = False
-
-    def startElement(self, name: str, attrs: XmlSaxAttributes) -> None:
-        if name == "node":
-            self.current_stop = BusStop(lat=float(attrs["lat"]), lon=float(attrs["lon"]))
-        elif name == "tag":
-            if attrs["k"] == "highway" and attrs["v"] == "bus_stop":
-                self.is_stop = True
-            if attrs["k"] == "ref:station":
-                self.current_stop.station_id = attrs["v"]
-            elif attrs["k"] == "direction" and attrs["v"]:
-                self.current_stop.direction_hints = attrs["v"].split(";")
-
-    def endElement(self, name: str) -> None:
-        if name == "node":
-            if self.is_stop and self.current_stop:
-                self.stops[self.current_stop.station_id].append(self.current_stop)
-            self.is_stop = False
-
-    @classmethod
-    def load_from_file(cls, path: StrPath) -> defaultdict[str, list[BusStop]]:
-        handler = cls()
-        xml_sax_parse(path, handler)
-        return handler.stops
 
 
 @dataclass
@@ -120,16 +69,14 @@ class LoadBusStops(Task):
 
     def execute(self, r: TaskRuntime) -> None:
         self.stop_locations = self.load_stop_locations(r.db)
-        curated_bus_stops = PLRailMapBusStopLoader.load_from_file(
-            r.resources["pl_rail_map.osm"].stored_at,
-        )
-        bus_trips_by_stops = self.group_bus_trips(self.load_bus_trips(r.db))
+        stations_data = load_stations(r.resources["geo.osm"].stored_at)
+        bus_trips_by_station = self.group_bus_trips(self.load_bus_trips(r.db))
         uncurated_stations = list[str]()
 
-        for station_id, trips in bus_trips_by_stops.items():
-            if stops := curated_bus_stops.get(station_id):
+        for station_id, trips in bus_trips_by_station.items():
+            if (station := stations_data.get(station_id)) and station.bus_stops:
                 with r.db.transaction():
-                    self.curate_bus_stops(r.db, station_id, stops, trips)
+                    self.curate_bus_stops(r.db, station_id, station.bus_stops, trips)
             else:
                 uncurated_stations.append(station_id)
 
@@ -157,11 +104,12 @@ class LoadBusStops(Task):
             yield Trip(id=trip_id, stop_times=[StopTime(r[1], r[2]) for r in rows])
 
     def group_bus_trips(self, trips: Iterable[Trip]) -> dict[str, list[tuple[int, Trip]]]:
-        by_stop = dict[str, list[tuple[int, Trip]]]()
+        by_station = dict[str, list[tuple[int, Trip]]]()
         for trip in trips:
             for offset, stop_time in enumerate(trip.stop_times):
-                by_stop.setdefault(stop_time.id, []).append((offset, trip))
-        return by_stop
+                station_id = stop_time.id.partition("_")[0]
+                by_station.setdefault(station_id, []).append((offset, trip))
+        return by_station
 
     def warn_about_uncurated_stations(self, db: DBConnection, ids: list[str]) -> None:
         if not ids:
@@ -176,16 +124,18 @@ class LoadBusStops(Task):
         self,
         db: DBConnection,
         station_id: str,
-        stops: list[BusStop],
+        stops: Iterable[BusStop],
         trips: Iterable[tuple[int, Trip]],
     ) -> None:
-        if len(stops) == 1:
-            stop_updates = StopUpdate.for_trips(trips, stops[0].gtfs_id)
-            new_stops = stops
+        stops_by_id = {get_stop_gtfs_id(station_id, stop): stop for stop in stops}
+        if len(stops_by_id) == 1:
+            gtfs_id = next(iter(stops_by_id))
+            stop_updates = StopUpdate.for_trips(trips, gtfs_id)
+            new_stops = stops_by_id
         else:
-            matcher = GeoTripMatcher(stops, self.stop_locations)
+            matcher = GeoTripMatcher(stops_by_id, self.stop_locations)
             stop_updates = [matcher.match(trip, offset) for offset, trip in trips]
-            new_stops = [i for i in stops if i.gtfs_id in matcher.used_ids]
+            new_stops = {id: stop for id, stop in stops_by_id.items() if id in matcher.used_ids}
 
         self.logger.debug(
             "Creating %d stops for %d bus trips at %s",
@@ -199,7 +149,7 @@ class LoadBusStops(Task):
         self,
         db: DBConnection,
         station_id: str,
-        new_stops: Sequence[BusStop],
+        new_stops: Mapping[str, BusStop],
         stop_updates: Sequence[StopUpdate],
     ) -> None:
         self.apply_stops(db, station_id, new_stops)
@@ -216,68 +166,58 @@ class LoadBusStops(Task):
             ((i.new_stop_id, i.trip_id, i.old_stop_id) for i in stop_updates),
         )
 
-    def apply_stops(self, db: DBConnection, station_id: str, new_stops: Sequence[BusStop]) -> None:
-        preserve_train = has_train_departures(db, station_id)
-        existing_stop = db.retrieve_must(Stop, station_id)
-        new_extra_fields = json.dumps({"country": existing_stop.get_extra_field("country") or ""})
+    def apply_stops(
+        self,
+        db: DBConnection,
+        station_id: str,
+        new_stops: Mapping[str, BusStop],
+    ) -> None:
+        station = db.retrieve_must(Stop, station_id)
+        country = station.get_extra_field("country") or ""
 
-        if preserve_train:
-            rail_id = f"{station_id}_RAIL"
+        # Move the station location if there are only bus departures,
+        # and the bus stops spread apart geographically.
+        if (
+            not has_train_departures(db, station_id)
+            and bbox_diagonal_dist(new_stops.values()) <= 500
+        ):
+            station.lat = round(mean(i.lat for i in new_stops.values()), 6)
+            station.lon = round(mean(i.lon for i in new_stops.values()), 6)
             db.raw_execute(
-                "UPDATE stops SET stop_id = ? WHERE stop_id = ?",
-                (rail_id, station_id),
+                "UPDATE stops SET lat = ?, lon = ? WHERE stop_id = ? OR stop_id = ?",
+                (station.lat, station.lon, station_id, f"{station_id}_FALLBACK"),
             )
-            db.raw_execute(
-                "INSERT INTO stops (stop_id, name, lat, lon, location_type, extra_fields_json) "
-                "VALUES (?, ?, ?, ?, 1, ?)",
-                (
-                    station_id,
-                    existing_stop.name,
-                    existing_stop.lat,
-                    existing_stop.lon,
-                    existing_stop.extra_fields_json,
-                ),
-            )
-            db.raw_execute(
-                "UPDATE stops SET parent_station = ?, extra_fields_json = ? WHERE stop_id = ?",
-                (station_id, new_extra_fields, rail_id),
-            )
-            db.raw_execute_many(
-                "INSERT INTO stops (stop_id, name, lat, lon, parent_station, extra_fields_json) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    (i.gtfs_id, existing_stop.name, i.lat, i.lon, station_id, new_extra_fields)
-                    for i in new_stops
-                ),
-            )
-        elif len(new_stops) > 1:
-            lat = round(mean(i.lat for i in new_stops), 6)
-            lon = round(mean(i.lon for i in new_stops), 6)
-            db.raw_execute(
-                "UPDATE stops SET lat = ?, lon = ?, location_type = 1 WHERE stop_id = ?",
-                (lat, lon, station_id),
-            )
-            db.raw_execute_many(
-                "INSERT INTO stops (stop_id,name,lat,lon,parent_station) VALUES (?,?,?,?,?)",
-                ((i.gtfs_id, existing_stop.name, i.lat, i.lon, station_id) for i in new_stops),
-            )
-        else:
-            stop = new_stops[0]
-            db.raw_execute(
-                "UPDATE stops SET stop_id = ?, lat = ?, lon = ? WHERE stop_id = ?",
-                (stop.gtfs_id, stop.lat, stop.lon, station_id),
-            )
+
+        db.create_many(
+            Stop,
+            (
+                Stop(
+                    id=gtfs_id,
+                    name=station.name,
+                    lat=bus_stop.lat,
+                    lon=bus_stop.lon,
+                    wheelchair_boarding=None,
+                    location_type=Stop.LocationType.STOP,
+                    parent_station=station_id,
+                    extra_fields_json=json.dumps({"country": country, "stop_access": "1"}),
+                )
+                for gtfs_id, bus_stop in new_stops.items()
+            ),
+        )
 
 
 class GeoTripMatcher:
     def __init__(
         self,
-        bus_stops: Iterable[BusStop],
+        bus_stops: Mapping[str, BusStop],
         stop_locations: Mapping[str, tuple[float, float]],
     ) -> None:
         self.stop_locations = stop_locations
         self.stop_id_by_hint = {
-            hint: stop.gtfs_id for stop in bus_stops for hint in stop.direction_hints
+            hint: gtfs_id for gtfs_id, stop in bus_stops.items() for hint in stop.direction
+        }
+        self.stop_id_by_towards = {
+            towards: gtfs_id for gtfs_id, stop in bus_stops.items() for towards in stop.towards
         }
         self.match_cache = dict[tuple[str | None, str, str | None], str]()
         self.used_ids = set[str]()
@@ -294,6 +234,9 @@ class GeoTripMatcher:
         return StopUpdate.for_trip(trip, stop_time_offset, replacement_id)
 
     def match_inner(self, prev_id: str | None, curr_id: str, next_id: str | None) -> str:
+        if next_id and (towards_id := self.stop_id_by_towards.get(next_id)):
+            return towards_id
+
         terminates = not prev_id or not next_id
         if terminates and (terminus_id := self.stop_id_by_hint.get("T")):
             return terminus_id
@@ -318,6 +261,14 @@ class GeoTripMatcher:
         return initial_bearing(*self.stop_locations[a], *self.stop_locations[b]) % 360
 
 
+def get_stop_gtfs_id(station_id: str, stop: BusStop) -> str:
+    if stop.direction and "*" not in stop.direction:
+        return f"{station_id}_BUS_{stop.direction[0]}"
+    if stop.towards:
+        return f"{station_id}_BUS_{stop.towards[0]}"
+    return f"{station_id}_BUS"
+
+
 def get_stop_name(db: DBConnection, stop_id: str) -> str:
     # fmt: off
     return cast(
@@ -329,14 +280,33 @@ def get_stop_name(db: DBConnection, stop_id: str) -> str:
     # fmt: on
 
 
-def has_train_departures(db: DBConnection, stop_id: str) -> bool:
+def has_train_departures(db: DBConnection, station_id: str) -> bool:
     with db.raw_execute(
-        "SELECT 1 FROM stop_times LEFT JOIN trips USING (trip_id) "
-        "LEFT JOIN routes USING (route_id) WHERE stop_id = ? AND type = 2 "
+        "SELECT 1 FROM stop_times "
+        "JOIN trips USING (trip_id) JOIN routes USING (route_id) "
+        "WHERE stop_id LIKE concat(?, '%') AND routes.type = 2 "
         "LIMIT 1",
-        (stop_id,),
+        (station_id,),
     ) as q:
         return q.one() is not None
+
+
+def bbox_diagonal_dist(stops: Iterable[BusStop]) -> float:
+    min_lat = inf
+    min_lon = inf
+    max_lat = -inf
+    max_lon = -inf
+
+    for stop in stops:
+        min_lat = min(min_lat, stop.lat)
+        min_lon = min(min_lon, stop.lon)
+        max_lat = max(max_lat, stop.lat)
+        max_lon = max(max_lon, stop.lon)
+
+    if min_lat == inf:
+        return 0  # no stops
+
+    return earth_distance_m(min_lat, min_lon, max_lat, max_lon)
 
 
 def list_get[T, U](seq: Sequence[T], idx: int, default: U = None) -> T | U:

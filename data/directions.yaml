@@ -37,6 +37,7 @@
     - [80416, 280603] # Kraków Gł. -> Kraków Piastów
     - [76687, 76711]  # Hucisko -> Kurów Suski
     - [179275, 82404]  # Plaveč -> Muszyna
+    - [80333, 235879]  # Kraków Mydlniki -> Kraków Lotnisko, some weird replacement buses
   force_for_conflicting: true
 
 
@@ -51,6 +52,7 @@
   outbound_pairs:
     - [30601, 29892] # Poznań Główny -> Poznań Grabary
     - [42879, 42606] # Lasocice -> Leszno
+    - [44701, 44750] # Jarocin -> Żerków
   force_for_conflicting: true
 
 # Wrocław area: "0" is westbound from Wrocław Główny
@@ -64,6 +66,7 @@
     - [44305, 44511]  # Rawicz -> Bojanowo
     - [59352, 242927] # Siedlec Trzebnicki -> Pierwoszów Miłocin
     - [55632, 55277]  # Sędzisław -> Kamienna Góra
+    - [51995, 51847]  # Jerzmanki -> Zgorzelec
   pairs_to_ignore:
     - [58347, 58172]  # Jelcz-Laskowice - Jelcz Miłoszyce
   force_for_conflicting: true

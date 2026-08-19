@@ -14,3 +14,6 @@ force_via:
   - from: "273"  # Szczecin Główny
     to: "1123"  # Szczecin Zdroje
     via: [53.389366, 14.524913]  # Pomorzany
+  - from: "77107"  # Oświęcim
+    to: "80416"  # Kraków Główny
+    via: [50.002186, 19.429353]  # Zator
