@@ -16,10 +16,12 @@ class AssignDirections(Task):
         super().__init__(name=task_name)
         self.assigned_count = 0
         self.skipped_count = 0
+        self.skipped_trip_ids: Dict[str, set[str]] = {}
         self.heuristic_agencies = ['AR', 'IC', 'LKA', 'PR', 'KW']
 
     def execute(self, r: TaskRuntime) -> None:
         self.logger.info("Starting automatic direction assignment...")
+        self.skipped_trip_ids.clear()
 
         # Get route IDs excluding heuristic agencies
         placeholders = ", ".join(["?"] * len(self.heuristic_agencies))
@@ -35,6 +37,8 @@ class AssignDirections(Task):
 
         for route_id in route_ids:
             all_updates.extend(self.process_route(r.db, route_id))
+            if route_id.startswith("KM_") and (skipped := self.skipped_trip_ids.get(route_id)):
+                all_updates.extend(self.process_heuristic_route(r.db, route_id, skipped))
 
         for agency in self.heuristic_agencies:
             self.logger.info(f"Processing heuristic agency {agency}...")
@@ -85,7 +89,12 @@ class AssignDirections(Task):
 
         return trip_stops
 
-    def process_heuristic_route(self, db: DBConnection, route_id: str) -> List[Tuple[int, str]]:
+    def process_heuristic_route(
+        self,
+        db: DBConnection,
+        route_id: str,
+        target_trip_ids: set[str] | None = None,
+    ) -> List[Tuple[int, str]]:
         """
         Processes routes by clustering trips based on geometric similarity.
         Used for agencies where simple reference trip matching is insufficient.
@@ -104,8 +113,9 @@ class AssignDirections(Task):
             end_node = ref_stops[-1]
             base_dir = 0 if start_node <= end_node else 1
             
-            updates.append((base_dir, ref_trip_id))
-            self.assigned_count += 1
+            if target_trip_ids is None or ref_trip_id in target_trip_ids:
+                updates.append((base_dir, ref_trip_id))
+                self.assigned_count += 1
 
             ref_indices = {stop: i for i, stop in enumerate(ref_stops)}
             matched_trip_ids: List[str] = []
@@ -125,9 +135,10 @@ class AssignDirections(Task):
                 is_same_direction = idx_first < idx_last
                 final_dir = base_dir if is_same_direction else (1 - base_dir)
                 
-                updates.append((final_dir, trip_id))
+                if target_trip_ids is None or trip_id in target_trip_ids:
+                    updates.append((final_dir, trip_id))
+                    self.assigned_count += 1
                 matched_trip_ids.append(trip_id)
-                self.assigned_count += 1
 
             for tid in matched_trip_ids:
                 del pool[tid]
@@ -159,6 +170,7 @@ class AssignDirections(Task):
             common_stops = [s for s in stops if s in ref_stop_indices]
             if len(common_stops) < 2:
                 self.skipped_count += 1
+                self.skipped_trip_ids.setdefault(route_id, set()).add(trip_id)
                 continue
 
             # Determine direction based on stop sequence indices in reference trip
