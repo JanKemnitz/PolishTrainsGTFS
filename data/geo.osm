@@ -90245,7 +90245,11 @@
   <node id="70325" action="modify" lat="50.51039727999" lon="21.64946077108" version="1"/>
   <node id="70326" action="modify" lat="50.51170725411" lon="21.65270087957" version="1"/>
   <node id="70327" action="modify" lat="50.51294896686" lon="21.65572641134" version="1"/>
-  <node id="70328" action="modify" lat="50.51476371904" lon="21.66010377645" version="1"/>
+  <node id="70328" action="modify" lat="50.51476371904" lon="21.66010377645" version="1">
+    <tag k="name" v="Chmielów"/>
+    <tag k="railway" v="station"/>
+    <tag k="ref" v="65706"/>
+  </node>
   <node id="70329" action="modify" lat="50.51831115341" lon="21.66890142202" version="1"/>
   <node id="70330" action="modify" lat="50.52204931497" lon="21.67802093267" version="1"/>
   <node id="70331" action="modify" lat="50.52371364978" lon="21.68201207042" version="1"/>
@@ -90262,7 +90266,11 @@
   <node id="70342" action="modify" lat="50.46055034669" lon="21.54288051367" version="1"/>
   <node id="70343" action="modify" lat="50.46602775156" lon="21.55054090261" version="1"/>
   <node id="70344" action="modify" lat="50.47054852303" lon="21.55693528891" version="1"/>
-  <node id="70345" action="modify" lat="50.47255609865" lon="21.55974624395" version="1"/>
+  <node id="70345" action="modify" lat="50.47255609865" lon="21.55974624395" version="1">
+    <tag k="name" v="Skopanie"/>
+    <tag k="railway" v="station"/>
+    <tag k="ref" v="65789"/>
+  </node>
   <node id="70346" action="modify" lat="50.47327989752" lon="21.56090495825" version="1"/>
   <node id="70347" action="modify" lat="50.47426315371" lon="21.56292197943" version="1"/>
   <node id="70348" action="modify" lat="50.47504155035" lon="21.56575439215" version="1"/>
@@ -90313,6 +90321,11 @@
   <node id="70393" action="modify" lat="51.55056324413" lon="21.84315676021" version="1"/>
   <node id="70394" action="modify" lat="51.54971489351" lon="21.84311160106" version="1"/>
   <node id="70395" action="modify" lat="51.55216235683" lon="21.84401953762" version="1"/>
+  <node id="70396" action="modify" lat="50.4863975482" lon="21.62260015518" version="1">
+    <tag k="name" v="Dąbrowica Małopolska"/>
+    <tag k="railway" v="station"/>
+    <tag k="ref" v="65771"/>
+  </node>
   <way id="1" action="modify" version="1">
     <nd ref="15250"/>
     <nd ref="15249"/>
@@ -110568,6 +110581,7 @@
     <nd ref="70357"/>
     <nd ref="70358"/>
     <nd ref="70359"/>
+    <nd ref="70396"/>
     <nd ref="70360"/>
     <nd ref="70361"/>
     <nd ref="70362"/>
