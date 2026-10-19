@@ -157,7 +157,15 @@ class LoadICKPD(LoadExternal):
     @staticmethod
     def get_required_resources() -> dict[str, Resource]:
         ftp_credentials = get_apikey("IC_FTP_CREDENTIALS")
-        if ftp_credentials:
+
+        if not ftp_credentials:
+            return {}
+        elif ftp_credentials == "__local__":
+            return {
+                "ic_kpd_rozklad.csv": LocalResource("_impuls_workspace/ic_kpd_rozklad.csv"),
+                "waypoints.yaml": LocalResource("data/waypoints.yaml"),
+            }
+        else:
             username, _, password = ftp_credentials.strip().partition(":")
             return {
                 "ic_kpd_rozklad.csv": ZippedResource(
@@ -171,8 +179,6 @@ class LoadICKPD(LoadExternal):
                 ),
                 "waypoints.yaml": LocalResource("data/waypoints.yaml"),
             }
-        else:
-            return {}
 
     def clear(self) -> None:
         self.waypoints.clear()
