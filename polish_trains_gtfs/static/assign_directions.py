@@ -1,184 +1,160 @@
 # SPDX-FileCopyrightText: 2026 Jan Kemnitz
 # SPDX-License-Identifier: MIT
 
+import math
 from collections import defaultdict
-from typing import cast, Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple, cast
 
-from impuls import Task, TaskRuntime, DBConnection
+from impuls import DBConnection, Task, TaskRuntime
+
+Point = Tuple[float, float]  # (x, y) in km, x = east, y = north
 
 
 class AssignDirections(Task):
     """
-    Automatically assigns direction_id (0 or 1) to trips based
-    on the longest route variant (Reference Trip).
+    Assigns direction_id (0 or 1) to every trip, in a way that is stable between runs.
+
+    For each route a fixed axis A -> B is chosen: the two stations served by the route
+    which are the farthest apart. A trip gets 0 when it travels along the axis (its
+    first -> last vector points the same way as A -> B), 1 otherwise.
+
+    The axis depends only on the set of stations served by the route, never on trip_ids,
+    on the order of trips or on platforms, so the same physical train keeps its
+    direction_id between runs. The axis is oriented towards north-east (A is the
+    south-western end), with station ids as the tie-breaker for axes running NW-SE.
+    All stop_ids are compared at the station level (<id>_RAIL_x_y -> <id>).
     """
+
+    # When the axis runs almost exactly NW-SE, the north-east score is unreliable;
+    # below this share of the axis length the station ids decide instead.
+    NE_SCORE_MIN_SHARE = 0.1
+
     def __init__(self, task_name: str | None = None) -> None:
         super().__init__(name=task_name)
         self.assigned_count = 0
         self.skipped_count = 0
-        self.skipped_trip_ids: Dict[str, set[str]] = {}
-        self.heuristic_agencies = ['AR', 'IC', 'LKA', 'PR', 'KW']
 
     def execute(self, r: TaskRuntime) -> None:
-        self.logger.info("Starting automatic direction assignment...")
-        self.skipped_trip_ids.clear()
-
-        # Get route IDs excluding heuristic agencies
-        placeholders = ", ".join(["?"] * len(self.heuristic_agencies))
-        
+        self.assigned_count = 0
+        self.skipped_count = 0
+        positions = self.load_station_positions(r.db)
         route_ids = [
-            cast(str, row[0]) 
-            for row in r.db.raw_execute(f"SELECT DISTINCT route_id FROM routes WHERE agency_id NOT IN ({placeholders})", self.heuristic_agencies)
+            cast(str, row[0])
+            for row in r.db.raw_execute("SELECT route_id FROM routes ORDER BY route_id")
         ]
+        self.logger.info(f"Assigning directions for {len(route_ids)} routes...")
 
-        self.logger.info(f"Processing {len(route_ids)} routes...")
-
-        all_updates: List[Tuple[int, str]] = []
-
+        updates: List[Tuple[Optional[int], str]] = []
         for route_id in route_ids:
-            all_updates.extend(self.process_route(r.db, route_id))
-            if route_id.startswith("KM_") and (skipped := self.skipped_trip_ids.get(route_id)):
-                all_updates.extend(self.process_heuristic_route(r.db, route_id, skipped))
+            updates.extend(self.process_route(r.db, route_id, positions))
 
-        for agency in self.heuristic_agencies:
-            self.logger.info(f"Processing heuristic agency {agency}...")
-            heuristic_route_ids = [
-                cast(str, row[0]) 
-                for row in r.db.raw_execute(
-                    "SELECT DISTINCT route_id FROM routes WHERE agency_id = ?", 
-                    (agency,)
-                )
-            ]
-
-            self.logger.info(f"Processing {len(heuristic_route_ids)} routes...")
-
-            for route_id in heuristic_route_ids:
-                all_updates.extend(self.process_heuristic_route(r.db, route_id))
-
-        # Save changes to database
-        if all_updates:
-            self.logger.info(f"Updating direction_id for {len(all_updates)} trips.")
-            with r.db.transaction():
-                r.db.raw_execute_many(
-                    "UPDATE trips SET direction = ? WHERE trip_id = ?",
-                    all_updates
-                )
-            self.logger.info(f"Direction assignment completed: {self.assigned_count} assigned, {self.skipped_count} skipped.")
-        else:
-            self.logger.info("No directions assigned (no valid routes found?).")
-
-    def get_route_trips(self, db: DBConnection, route_id: str) -> Dict[str, List[str]]:
-        """
-        Retrieves all trips for a given route and their stop sequences.
-        Returns a dict mapping trip_id to list of stop_ids.
-        """
-        rows = db.raw_execute(
-            """
-            SELECT t.trip_id, s.stop_id
-            FROM trips t
-            JOIN stop_times s ON t.trip_id = s.trip_id
-            WHERE t.route_id = ?
-            ORDER BY t.trip_id, s.stop_sequence
-            """,
-            (route_id,)
+        with r.db.transaction():
+            r.db.raw_execute_many("UPDATE trips SET direction = ? WHERE trip_id = ?", updates)
+        self.logger.info(
+            f"Direction assignment completed: {self.assigned_count} assigned, "
+            f"{self.skipped_count} skipped."
         )
 
-        trip_stops: Dict[str, List[str]] = defaultdict(list)
-        for r_trip_id, r_stop_id in rows:
-            trip_stops[cast(str, r_trip_id)].append(cast(str, r_stop_id))
+    @staticmethod
+    def station_of(stop_id: str) -> str:
+        return stop_id.partition("_")[0]
 
-        return trip_stops
-
-    def process_heuristic_route(
-        self,
-        db: DBConnection,
-        route_id: str,
-        target_trip_ids: set[str] | None = None,
-    ) -> List[Tuple[int, str]]:
-        """
-        Processes routes by clustering trips based on geometric similarity.
-        Used for agencies where simple reference trip matching is insufficient.
-        """
-        pool = self.get_route_trips(db, route_id)
-
-        updates: List[Tuple[int, str]] = []
-
-        while pool:
-            # Select group leader (longest remaining trip)
-            ref_trip_id = max(pool, key=lambda t: len(pool[t]))
-            ref_stops = pool.pop(ref_trip_id)
-            
-            # Anchor direction based on simple start/end node ID comparison
-            start_node = ref_stops[0]
-            end_node = ref_stops[-1]
-            base_dir = 0 if start_node <= end_node else 1
-            
-            if target_trip_ids is None or ref_trip_id in target_trip_ids:
-                updates.append((base_dir, ref_trip_id))
-                self.assigned_count += 1
-
-            ref_indices = {stop: i for i, stop in enumerate(ref_stops)}
-            matched_trip_ids: List[str] = []
-
-            for trip_id, stops in pool.items():
-                common_stops = [s for s in stops if s in ref_indices]
-
-                # Require minimum overlap to determine direction
-                overlap_ratio = len(common_stops) / len(stops)
-                if len(common_stops) < 2 or overlap_ratio < 0.3:
-                    continue
-
-                idx_first = ref_indices[common_stops[0]]
-                idx_last = ref_indices[common_stops[-1]]
-
-                # Match direction with leader
-                is_same_direction = idx_first < idx_last
-                final_dir = base_dir if is_same_direction else (1 - base_dir)
-                
-                if target_trip_ids is None or trip_id in target_trip_ids:
-                    updates.append((final_dir, trip_id))
-                    self.assigned_count += 1
-                matched_trip_ids.append(trip_id)
-
-            for tid in matched_trip_ids:
-                del pool[tid]
-
-        return updates
-
-    def process_route(self, db: DBConnection, route_id: str) -> List[Tuple[int, str]]:
-        """
-        Analyzes a route by finding a reference trip (longest)
-        and comparing other trips to it to determine direction.
-        """
-        trip_stops = self.get_route_trips(db, route_id)
-        if not trip_stops:
-            return []
-
-        # Find reference trip (longest variant)
-        ref_trip_id = max(trip_stops, key=lambda t: len(trip_stops[t]))
-        ref_stops = trip_stops[ref_trip_id]
-        ref_stop_indices = {stop: i for i, stop in enumerate(ref_stops)}
-
-        updates: List[Tuple[int, str]] = []
-
-        for trip_id, stops in trip_stops.items():
-            if trip_id == ref_trip_id:
-                updates.append((0, trip_id))
-                self.assigned_count += 1
+    def load_station_positions(self, db: DBConnection) -> Dict[str, Point]:
+        """Station position in km (equirectangular projection around Poland)."""
+        raw: Dict[str, List[Tuple[float, float]]] = defaultdict(list)
+        exact: Dict[str, Tuple[float, float]] = {}
+        for stop_id, lat, lon in db.raw_execute("SELECT stop_id, lat, lon FROM stops"):
+            stop_id = cast(str, stop_id)
+            lat, lon = cast(float, lat), cast(float, lon)
+            if lat == 0 and lon == 0:
                 continue
+            station = self.station_of(stop_id)
+            if stop_id == station:
+                exact[station] = (lat, lon)
+            raw[station].append((lat, lon))
 
-            common_stops = [s for s in stops if s in ref_stop_indices]
-            if len(common_stops) < 2:
+        positions: Dict[str, Point] = {}
+        for station, coords in raw.items():
+            lat, lon = exact.get(station) or (
+                sum(c[0] for c in coords) / len(coords),
+                sum(c[1] for c in coords) / len(coords),
+            )
+            positions[station] = (lon * 111.32 * math.cos(math.radians(52.0)), lat * 110.57)
+        return positions
+
+    def get_route_trips(self, db: DBConnection, route_id: str) -> Dict[str, List[str]]:
+        """trip_id -> station ids in stop order (consecutive duplicates collapsed)."""
+        rows = db.raw_execute(
+            "SELECT t.trip_id, s.stop_id FROM trips t "
+            "JOIN stop_times s ON t.trip_id = s.trip_id "
+            "WHERE t.route_id = ? ORDER BY t.trip_id, s.stop_sequence",
+            (route_id,),
+        )
+        trips: Dict[str, List[str]] = defaultdict(list)
+        for trip_id, stop_id in rows:
+            stations = trips[cast(str, trip_id)]
+            station = self.station_of(cast(str, stop_id))
+            if not stations or stations[-1] != station:
+                stations.append(station)
+        return trips
+
+    def route_axis(self, stations: List[str], positions: Dict[str, Point]) -> Optional[Point]:
+        """Unit vector from the south-western to the north-eastern end of the route."""
+        known = sorted({s for s in stations if s in positions})
+        if len(known) < 2:
+            return None
+
+        best: Optional[Tuple[float, str, str]] = None
+        for i, a in enumerate(known):
+            ax, ay = positions[a]
+            for b in known[i + 1 :]:
+                bx, by = positions[b]
+                d = (bx - ax) ** 2 + (by - ay) ** 2
+                if best is None or d > best[0]:
+                    best = (d, a, b)
+        assert best is not None
+        dist2, a, b = best
+        if dist2 <= 0:
+            return None
+
+        (ax, ay), (bx, by) = positions[a], positions[b]
+        vx, vy = bx - ax, by - ay
+        length = math.sqrt(dist2)
+        ne_score = (vx + vy) / math.sqrt(2)
+        if abs(ne_score) >= self.NE_SCORE_MIN_SHARE * length:
+            flip = ne_score < 0
+        else:
+            flip = int(a) > int(b) if a.isdigit() and b.isdigit() else a > b
+        if flip:
+            vx, vy = -vx, -vy
+        return (vx / length, vy / length)
+
+    def trip_vector(self, stations: List[str], positions: Dict[str, Point]) -> Optional[Point]:
+        known = [positions[s] for s in stations if s in positions]
+        if len(known) < 2:
+            return None
+        first, last = known[0], known[-1]
+        span = math.dist(first, last)
+        far = max(known, key=lambda p: math.dist(first, p))
+        # Loop-like trips (ending close to where they started): use the farthest point
+        target = far if span < 0.2 * math.dist(first, far) else last
+        v = (target[0] - first[0], target[1] - first[1])
+        return v if v != (0.0, 0.0) else None
+
+    def process_route(
+        self, db: DBConnection, route_id: str, positions: Dict[str, Point]
+    ) -> List[Tuple[Optional[int], str]]:
+        trips = self.get_route_trips(db, route_id)
+        axis = self.route_axis([s for st in trips.values() for s in st], positions)
+
+        updates: List[Tuple[Optional[int], str]] = []
+        for trip_id, stations in trips.items():
+            v = self.trip_vector(stations, positions) if axis else None
+            if axis is None or v is None:
+                updates.append((None, trip_id))
                 self.skipped_count += 1
-                self.skipped_trip_ids.setdefault(route_id, set()).add(trip_id)
                 continue
-
-            # Determine direction based on stop sequence indices in reference trip
-            idx_first = ref_stop_indices[common_stops[0]]
-            idx_last = ref_stop_indices[common_stops[-1]]
-
-            direction = 0 if idx_first < idx_last else 1
-            updates.append((direction, trip_id))
+            dot = v[0] * axis[0] + v[1] * axis[1]
+            updates.append((0 if dot >= 0 else 1, trip_id))
             self.assigned_count += 1
-
         return updates
