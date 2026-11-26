@@ -14,6 +14,7 @@ from .add_train_names import AddTrainNames
 from .curate_routes import CurateRoutes
 from .deduplicate_consecutive_times import DeduplicateConsecutiveTimes
 from .extract_routes import ExtractRoutes
+from .flatten_stations import FlattenStations  # Kiedy Wjazd
 from .generate_shapes import GenerateBusShapes, GenerateShapes
 from .load_bus_stops import LoadBusStops
 from .load_schedules import LoadSchedules
@@ -230,6 +231,7 @@ class PolishTrainsGTFS(App):
                 AssignDirections(),
                 SplitBusLegs(),
                 LoadBusStops(),
+                FlattenStations(),  # Kiedy Wjazd: one stop per station, no platforms
                 RemoveUnusedEntities(preserve_fallback_stops=True),
                 ExecuteSQL(
                     statement=(
