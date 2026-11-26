@@ -234,7 +234,8 @@ class GeoTripMatcher:
         return StopUpdate.for_trip(trip, stop_time_offset, replacement_id)
 
     def match_inner(self, prev_id: str | None, curr_id: str, next_id: str | None) -> str:
-        if next_id and (towards_id := self.stop_id_by_towards.get(next_id)):
+        next_station_id = next_id.partition("_")[0] if next_id else ""
+        if towards_id := self.stop_id_by_towards.get(next_station_id):
             return towards_id
 
         terminates = not prev_id or not next_id
@@ -284,7 +285,7 @@ def has_train_departures(db: DBConnection, station_id: str) -> bool:
     with db.raw_execute(
         "SELECT 1 FROM stop_times "
         "JOIN trips USING (trip_id) JOIN routes USING (route_id) "
-        "WHERE stop_id LIKE concat(?, '%') AND routes.type = 2 "
+        "WHERE stop_id LIKE ? || '%' AND routes.type = 2 "
         "LIMIT 1",
         (station_id,),
     ) as q:

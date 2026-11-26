@@ -20,6 +20,8 @@ from .load_bus_stops import LoadBusStops
 from .load_schedules import LoadSchedules
 from .load_stations import LoadStations
 from .remove_unused_entities import RemoveUnusedEntities
+from .remove_waypoints import RemoveWaypoints
+from .renumber_stop_times import RenumberStopTimes
 from .shift_negative_times import ShiftNegativeTimes
 from .split_bus_legs import SplitBusLegs
 from .util.apikey import get_apikey
@@ -250,6 +252,22 @@ class PolishTrainsGTFS(App):
                 ),
                 GenerateShapes("geo.osm", "shapes.yaml"),
                 GenerateBusShapes("geo.osm"),
+                RemoveWaypoints(),
+                RenumberStopTimes(),
+                ExecuteSQL(
+                    statement="UPDATE stop_times SET drop_off_type = 1 WHERE stop_sequence = 0",
+                    task_name="SetNoDropOffAtFirstStops",
+                ),
+                ExecuteSQL(
+                    statement=(
+                        "UPDATE stop_times SET pickup_type = 1 WHERE NOT EXISTS ("
+                        "  SELECT 1 FROM stop_times alt"
+                        "  WHERE stop_times.trip_id = alt.trip_id"
+                        "  AND alt.stop_sequence > stop_times.stop_sequence"
+                        ")"
+                    ),
+                    task_name="SetNoPickupAtLastStops",
+                ),
                 SaveGTFS(GTFS_HEADERS, args.output, ensure_order=True),
             ],
         )

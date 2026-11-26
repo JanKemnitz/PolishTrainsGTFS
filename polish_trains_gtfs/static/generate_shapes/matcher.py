@@ -4,7 +4,8 @@
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from itertools import chain, product
+from typing import Any, Protocol, cast
 
 import osmium
 import osmium.filter
@@ -59,7 +60,17 @@ class TrainMatcher(Matcher):
     def load_force_via(self, kd_tree: routx.KDTree, extra_config: Any) -> None:
         self.force_via.clear()
         for cfg in extra_config.get("force_via", []):
-            self.force_via[cfg["from"], cfg["to"]] = kd_tree.find_nearest_node(*cfg["via"]).id
+            node_id = kd_tree.find_nearest_node(*cfg["via"]).id
+            from_ids = cast(list[str], _ensure_list(cfg["from"]))
+            to_ids = cast(list[str], _ensure_list(cfg["to"]))
+            pairs = (
+                product(from_ids, to_ids)
+                if cfg.get("oneway", False)
+                else chain(product(from_ids, to_ids), product(to_ids, from_ids))
+            )
+
+            for from_, to in pairs:
+                self.force_via[from_, to] = node_id
 
     def load_specific_stop_positions(self, osm_path: StrPath) -> None:
         fp = (
@@ -146,7 +157,7 @@ class TrainMatcher(Matcher):
 
 
 class BusMatcher(Matcher):
-    MAX_DISTANCE_M = 50.0
+    MAX_DISTANCE_KM = 0.05
 
     def __init__(self) -> None:
         self.stop_to_node = dict[str, int]()
@@ -161,10 +172,10 @@ class BusMatcher(Matcher):
         kd_tree = routx.KDTree.build(graph)
         self.stop_to_node.clear()
         for stop in stops:
-            if "BUS" in stop.id or stop.id == "0":
+            if "BUS" in stop.id:
                 candidate = kd_tree.find_nearest_node(stop.lat, stop.lon)
                 distance = routx.earth_distance(stop.lat, stop.lon, candidate.lat, candidate.lon)
-                if distance <= self.MAX_DISTANCE_M:
+                if distance <= self.MAX_DISTANCE_KM:
                     self.stop_to_node[stop.id] = candidate.id
 
     def match(self, trip: Trip, stop_times: Sequence[StopTime]) -> MatchedTrip | None:
@@ -179,6 +190,10 @@ class BusMatcher(Matcher):
 
 def _unpack_osm_list(value: str, separator: str = ";") -> list[str]:
     return value.split(separator) if value else []
+
+
+def _ensure_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else [value]  # type: ignore
 
 
 def _extract_station_id(x: str) -> str:

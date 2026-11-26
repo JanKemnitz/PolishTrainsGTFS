@@ -6,6 +6,7 @@ from copy import copy
 from typing import Any, NotRequired, TypedDict
 
 from impuls import TaskRuntime
+from impuls.errors import DataError
 from impuls.model import Route, StopTime
 from impuls.tasks import SplitTripLegs
 from impuls.tools.color import text_color_for
@@ -65,21 +66,19 @@ class SplitBusLegs(SplitTripLegs):
         route.text_color = "FFFFFF"
 
     def get_departure_data(self, stop_time: StopTime) -> Any:
-        return stop_time.platform == "BUS" or (
-            # XXX: Fix for Koleje Mazowieckie - they don't always use "BUS" platforms,
-            #      sometimes they also mark buses with category starting with "Z".
-            stop_time.trip_id.startswith("PLK_KM_")
-            and (stop_time.get_extra_field("plk_category_code") or "").startswith("Z")
-        )
+        return stop_time.platform == "BUS"
 
     def arrival_only(self, stop_time: StopTime, previous_data: Any) -> StopTime:
+        if "WAYPOINT" in stop_time.platform:
+            raise DataError("attempted replacement bus transfer at a waypoint")
+
         new = copy(stop_time)
         extra = new.get_extra_fields()
         new.departure_time = new.arrival_time
 
         if previous_data:
-            station_id, _, _ = stop_time.stop_id.partition("_")
-            new.stop_id = f"{station_id}_FALLBACK"
+            station_id, _, suffix = stop_time.stop_id.partition("_")
+            new.stop_id = f"{station_id}_FALLBACK" if suffix else station_id
             new.platform = "BUS"
             extra["track"] = ""
         else:
@@ -90,13 +89,16 @@ class SplitBusLegs(SplitTripLegs):
         return new
 
     def departure_only(self, stop_time: StopTime, current_data: Any) -> StopTime:
+        if "WAYPOINT" in stop_time.platform:
+            raise DataError("attempted replacement bus transfer at a waypoint")
+
         new = copy(stop_time)
         extra = new.get_extra_fields()
         new.arrival_time = new.departure_time
 
         if current_data:
-            station_id, _, _ = stop_time.stop_id.partition("_")
-            new.stop_id = f"{station_id}_FALLBACK"
+            station_id, _, suffix = stop_time.stop_id.partition("_")
+            new.stop_id = f"{station_id}_FALLBACK" if suffix else station_id
             new.platform = "BUS"
             extra["track"] = ""
         elif new.platform == "BUS":
